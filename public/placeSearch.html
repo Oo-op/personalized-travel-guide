@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>校园导航系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        body {
+            background-color: #f0f2f5;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            display: flex;
+            gap: 2rem;
+            flex-grow: 1;
+        }
+
+        .query-form {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            flex-basis: 400px;
+            min-width: 300px;
+            width: 100%;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+
+        input {
+            width: 100%;
+            padding: 1rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 5px rgba(52, 152, 219, 0.2);
+        }
+
+        button {
+            width: 100%;
+            padding: 1rem;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        button:hover {
+            background: #2980b9;
+        }
+
+        .suggestions {
+            position: relative;
+            margin-top: 0.5rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            display: none;
+        }
+
+        .location-item {
+            padding: 1rem;
+            background: white;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .location-item:last-child {
+            border-bottom: none;
+        }
+
+        .location-item:hover {
+            background: #f8f9fa;
+        }
+
+        .spot-type {
+            font-size: 0.8rem;
+            color: #666;
+            margin-left: 0.5rem;
+            opacity: 0.8;
+        }
+
+        .results-container {
+            flex-grow: 1;
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        }
+
+        h3 {
+            color: #333;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 0.5rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        th {
+            background: #f8f9fa;
+            font-weight: 500;
+            color: #666;
+        }
+
+        .path-info {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .path-summary {
+            color: #333;
+            margin-bottom: 1rem;
+        }
+
+        .distance-info {
+            color: #3498db;
+            font-weight: 500;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .query-form {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>校园导航系统</h1>
+        <p>快速查找校园内各类场所</p>
+    </header>
+
+    <main class="container">
+        <section class="query-form">
+            <h3>路线查询</h3>
+            <div class="form-group">
+                <label for="startLocationQuery">起点位置</label>
+                <input type="text" id="startLocationQuery" placeholder="输入起点名称或坐标">
+                <div id="startQuerySuggestions" class="suggestions"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="spotTypeQuery">场所类型</label>
+                <input type="text" id="spotTypeQuery" placeholder="可选，如：教学楼/食堂">
+            </div>
+
+            <button onclick="executeSpotQuery()">开始查询</button>
+        </section>
+
+        <section class="results-container">
+            <div id="queryResults"></div>
+            <div id="path-details"></div>
+        </section>
+    </main>
+
+    <script>
+        // 调试模式
+        let debugMode = false;
+        // 当前路径模式：'two-point' 或 'multi-point'
+        let currentMode = 'two-point';
+        // 途径点数组
+        let waypoints = [];
+        // 当前路线
+        let currentRoute = null;
+        // 当前标记
+        let currentMarkers = [];
+
+        // 调试日志函数
+        function debugLog(...args) {
+            if (debugMode) {
+                console.log(...args);
+            }
+        }
+
+        // 切换调试模式
+        function toggleDebug() {
+            debugMode = !debugMode;
+            debugLog(`调试模式已${debugMode? '开启' : '关闭'}`);
+        }
+
+        class RoadNetwork {
+            constructor() {
+                this.nodes = new Map(); // 使用Map存储节点，键为"经度,纬度"字符串
+                this.spots = [];       // 地点列表
+                this.locationMap = new Map(); // 地点名称到坐标的映射
+                this.typeMap = new Map(); // 地点类型到地点列表的映射
+            }
+
+            // 添加路径段（动态创建节点）
+            addPathSegment(from, to, distance) {
+                // 解析坐标字符串
+                const fromCoord = this.parseCoordinate(from);
+                const toCoord = this.parseCoordinate(to);
+
+                const fromKey = this.formatCoordinate(fromCoord);
+                const toKey = this.formatCoordinate(toCoord);
+
+                // 创建或获取起点节点
+                if (!this.nodes.has(fromKey)) {
+                    this.nodes.set(fromKey, {
+                        lng: fromCoord.lng,
+                        lat: fromCoord.lat,
+                        edges: [] // 邻接边
+                    });
+                    debugLog(`创建新节点: ${fromKey}`);
+                }
+
+                // 创建或获取终点节点
+                if (!this.nodes.has(toKey)) {
+                    this.nodes.set(toKey, {
+                        lng: toCoord.lng,
+                        lat: toCoord.lat,
+                        edges: []
+                    });
+                    debugLog(`创建新节点: ${toKey}`);
+                }
+
+                // 添加双向边
+                this.nodes.get(fromKey).edges.push({
+                    to: toKey,
+                    distance
+                });
+
+                this.nodes.get(toKey).edges.push({
+                    to: fromKey,
+                    distance
+                });
+
+                debugLog(`添加路径: ${fromKey} <-> ${toKey}, 距离: ${distance}km`);
+            }
+
+            // 查询指定类型的场所，并按距离排序
+            querySpotsByType(startLocation, spotType) {
+                debugLog(`查询类型为"${spotType}"的地点，起点: ${startLocation}`);
+                
+                // 解析起点
+                let startNode;
+                if (typeof startLocation === 'string' && startLocation.includes(',')) {
+                    const coord = this.parseCoordinate(startLocation);
+                    startNode = this.findNodeByCoordinate(coord.lng, coord.lat);
+                } else {
+                    startNode = this.findNodeByLocationName(startLocation);
+                }
+                
+                if (!startNode) {
+                    debugLog('无法找到起点:', startLocation);
+                    return [];
+                }
+                
+                const startKey = this.formatCoordinate(startNode);
+                
+                // 筛选指定类型的地点
+                let targetSpots = [];
+                
+                // 处理空类型查询：显示卫生间和超市
+                if (!spotType) {
+                    targetSpots = this.spots.filter(spot => 
+                        ['卫生间', '超市'].includes(spot.type)
+                    );
+                } else {
+                    // 原有类型查询逻辑
+                    if (this.typeMap.has(spotType)) {
+                        targetSpots = this.typeMap.get(spotType);
+                    } else {
+                        targetSpots = this.spots.filter(spot => 
+                            spot.type.includes(spotType)
+                        );
+                    }
+                }
+                
+                debugLog(`找到 ${targetSpots.length} 个匹配的地点`);
+                
+                // 计算每个地点的最短路径
+                const results = [];
+                for (const spot of targetSpots) {
+                    const spotKey = this.formatCoordinate(spot);
+                    const spotNode = this.nodes.get(spotKey);
+                    
+                    if (!spotNode || spotKey === startKey) {
+                        debugLog(`地点 ${spot.name} 不在路网中或与起点相同，跳过`);
+                        continue;
+                    }
+                    
+                    // 计算最短路径
+                    const path = this.shortestPath(startKey, spotKey);
+                    
+                    if (path.length > 0) {
+                        // 计算总距离
+                        let totalDistance = 0;
+                        for (let i = 0; i < path.length - 1; i++) {
+                            const fromNode = this.nodes.get(path[i]);
+                            const edge = fromNode.edges.find(e => e.to === path[i + 1]);
+                            if (edge) totalDistance += edge.distance;
+                        }
+                        
+                        results.push({
+                            name: spot.name,
+                            type: spot.type,
+                            distance: totalDistance,
+                            path: path,
+                            location: spotKey
+                        });
+                    }
+                }
+
+                // 使用自定义排序函数（冒泡排序）
+                if (results.length > 1) {
+                    this.bubbleSort(results);
+                }
+                
+                return results;
+            }
+
+            // 自定义冒泡排序函数
+            bubbleSort(arr) {
+                const n = arr.length;
+                for (let i = 0; i < n - 1; i++) {
+                    for (let j = 0; j < n - i - 1; j++) {
+                        if (arr[j].distance > arr[j + 1].distance) {
+                            // 交换元素位置
+                            [arr[j], arr[j + 1]] = [arr[j + 1], arr[j]];
+                        }
+                    }
+                }
+            }
+
+            // 解析坐标字符串
+            parseCoordinate(coordStr) {
+                coordStr = coordStr.trim().replace(/[()]/g, '');
+                let [first, second] = coordStr.split(',').map(Number);
+
+                // 自动修正经纬度顺序
+                if (first > 180 || second > 90) {
+                    debugLog(`自动修正坐标顺序: ${first},${second} -> ${second},${first}`);
+                    [first, second] = [second, first];
+                }
+
+                return { lng: first, lat: second };
+            }
+
+            // 格式化坐标为字符串
+            formatCoordinate(coord) {
+                return `${coord.lng.toFixed(6)},${coord.lat.toFixed(6)}`;
+            }
+
+            // 添加地点
+            addSpot(spot) {
+                // 验证经纬度顺序
+                if (spot.lng > 180 || spot.lat > 90) {
+                    debugLog(`自动修正地点经纬度顺序: ${spot.name} (${spot.lng},${spot.lat}) -> (${spot.lat},${spot.lng})`);
+                    [spot.lng, spot.lat] = [spot.lat, spot.lng];
+                }
+
+                this.spots.push(spot);
+                this.locationMap.set(spot.name.toLowerCase(), this.formatCoordinate(spot));
+                
+                // 更新类型映射
+                if (!this.typeMap.has(spot.type)) {
+                    this.typeMap.set(spot.type, []);
+                }
+                this.typeMap.get(spot.type).push(spot);
+                
+                debugLog(`添加地点: ${spot.name} (${spot.lng.toFixed(6)},${spot.lat.toFixed(6)}), 类型: ${spot.type}`);
+            }
+
+            // 搜索地点
+            searchLocations(query) {
+                query = query.toLowerCase().trim();
+                return this.spots.filter(spot =>
+                    spot.name.toLowerCase().includes(query)
+                );
+            }
+
+            // 根据坐标查找节点
+            findNodeByCoordinate(lng, lat) {
+                const key = this.formatCoordinate({ lng, lat });
+                return this.nodes.get(key);
+            }
+
+            // 根据地点名称查找节点
+            findNodeByLocationName(name) {
+                const location = this.locationMap.get(name.toLowerCase());
+                if (!location) return null;
+
+                const [lng, lat] = location.split(',').map(Number);
+                return this.findNodeByCoordinate(lng, lat);
+            }
+
+            // 计算最短路径（Dijkstra算法）
+            shortestPath(from, to) {
+                // 原有逻辑保持不变
+                debugLog('========================================');
+                debugLog(`开始计算最短路径: ${from} -> ${to}`);
+                debugLog('========================================');
+
+                // 解析起点和终点
+                let fromNode, toNode;
+
+                // 如果是坐标格式
+                if (typeof from === 'string' && from.includes(',') && typeof to === 'string' && to.includes(',')) {
+                    const fromCoord = this.parseCoordinate(from);
+                    const toCoord = this.parseCoordinate(to);
+
+                    fromNode = this.findNodeByCoordinate(fromCoord.lng, fromCoord.lat);
+                    toNode = this.findNodeByCoordinate(toCoord.lng, toCoord.lat);
+                } else if (typeof from === 'object' && typeof to === 'object') {
+                    // 如果是对象格式
+                    fromNode = this.findNodeByCoordinate(from.lng, from.lat);
+                    toNode = this.findNodeByCoordinate(to.lng, to.lat);
+                } else {
+                    // 否则视为地点名称
+                    fromNode = this.findNodeByLocationName(from);
+                    toNode = this.findNodeByLocationName(to);
+                }
+
+                // 验证节点存在
+                if (!fromNode || !toNode) {
+                    debugLog('无法找到节点:', from, to);
+                    return [];
+                }
+
+                // Dijkstra算法实现
+                const distances = new Map();
+                const previous = new Map();
+                const unvisited = new Set([...this.nodes.keys()]);
+
+                // 初始化
+                for (const key of this.nodes.keys()) {
+                    distances.set(key, Infinity);
+                    previous.set(key, null);
+                }
+                distances.set(this.formatCoordinate(fromNode), 0);
+
+                debugLog('初始化距离表:', Array.from(distances.entries()));
+                debugLog('起点:', this.formatCoordinate(fromNode));
+                debugLog('终点:', this.formatCoordinate(toNode));
+
+                while (unvisited.size > 0) {
+                    // 找到未访问的最小距离节点
+                    let currentKey = null;
+                    let minDistance = Infinity;
+
+                    for (const key of unvisited) {
+                        if (distances.get(key) < minDistance) {
+                            minDistance = distances.get(key);
+                            currentKey = key;
+                        }
+                    }
+
+                    debugLog(`当前节点: ${currentKey}, 最小距离: ${minDistance}`);
+
+                    if (currentKey === null || currentKey === this.formatCoordinate(toNode)) break;
+
+                    unvisited.delete(currentKey);
+                    const currentNode = this.nodes.get(currentKey);
+
+                    // 更新邻居距离
+                    for (const edge of currentNode.edges) {
+                        const distance = distances.get(currentKey) + edge.distance;
+
+                        debugLog(`  检查邻居: ${edge.to}, 当前距离: ${distances.get(edge.to)}, 新距离: ${distance}`);
+
+                        if (distance < distances.get(edge.to)) {
+                            distances.set(edge.to, distance);
+                            previous.set(edge.to, currentKey);
+                            debugLog(`    更新距离: ${edge.to} = ${distance}, 前驱: ${currentKey}`);
+                        }
+                    }
+                }
+
+                // 构建路径
+                const path = [];
+                let currentKey = this.formatCoordinate(toNode);
+
+                debugLog('开始构建路径...');
+                debugLog('前驱节点表:', Array.from(previous.entries()));
+
+                while (currentKey && currentKey !== this.formatCoordinate(fromNode)) {
+                    path.unshift(currentKey);
+                    currentKey = previous.get(currentKey);
+                    debugLog(`当前路径节点: ${currentKey}`);
+                }
+
+                if (currentKey === this.formatCoordinate(fromNode)) {
+                    path.unshift(currentKey);
+                    debugLog('找到完整路径:', path);
+                    return path;
+                }
+
+                debugLog('无法构建完整路径');
+                return [];
+            }
+        }
+
+        // 全局变量
+        var roadNetwork = new RoadNetwork();
+
+        // 显示地点建议
+        function suggestLocations(inputId) {
+            // 原有逻辑保持不变
+            const input = document.getElementById(`${inputId}`);
+            const suggestions = document.getElementById(`${inputId}Suggestions`);
+            const query = input.value;
+
+            if (!query || query.length < 2 || !roadNetwork) {
+                suggestions.style.display = 'none';
+                return;
+            }
+
+            const results = roadNetwork.searchLocations(query);
+
+            if (results.length === 0) {
+                suggestions.style.display = 'none';
+                return;
+            }
+
+            suggestions.innerHTML = '';
+            results.forEach(spot => {
+                const item = document.createElement('div');
+                item.className = 'location-item';
+                item.innerHTML = `${spot.name} <span class="spot-type type-${getTypeClass(spot.type)}">${spot.type}</span>`;
+                item.onclick = function() {
+                    input.value = spot.name;
+                    suggestions.style.display = 'none';
+                };
+                suggestions.appendChild(item);
+            });
+
+            suggestions.style.display = 'block';
+        }
+
+        // 获取地点类型的CSS类
+        function getTypeClass(type) {
+            // 原有逻辑保持不变
+            if (type === '基础设施') return 'infrastructure';
+            if (type === '建筑物') return 'building';
+            if (type === '设施') return 'facility';
+            return 'other';
+        }
+
+        // 执行地点查询
+        function executeSpotQuery() {
+            const startLocation = document.getElementById('startLocationQuery').value;
+            const spotType = document.getElementById('spotTypeQuery').value;
+            
+            if (!startLocation) {
+                alert('请输入起点位置');
+                return;
+            }
+
+            // 允许类型为空
+            const results = roadNetwork.querySpotsByType(startLocation, spotType);
+            
+            if (results.length === 0) {
+                document.getElementById('queryResults').innerHTML = '<p>未找到匹配的结果</p>';
+                document.getElementById('path-details').innerHTML = '';
+                return;
+            }
+            
+            // 显示结果
+            let html = `<h3>查询结果 (共找到 ${results.length} 个结果，按距离排序)</h3><table>`;
+            html += '<tr><th>排名</th><th>地点名称</th><th>类型</th><th>距离(公里)</th></tr>';
+            
+            results.forEach((result, index) => {
+                html += `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${result.name}</td>
+                        <td><span class="spot-type type-${getTypeClass(result.type)}">${result.type}</span></td>
+                        <td>${result.distance.toFixed(3)}</td>
+                    </tr>
+                `;
+            });
+            
+            html += '</table>';
+            document.getElementById('queryResults').innerHTML = html;
+            
+            // 自动显示第一个结果的路径详情
+            if (results.length > 0) {
+                showPathDetails(results[0].location, results[0].name);
+            }
+        }
+
+        // 为起点输入框添加自动完成
+        document.getElementById('startLocationQuery').addEventListener('input', function() {
+            suggestLocations('startLocationQuery');
+        });
+
+        // 显示路径详情
+        function showPathDetails(destinationKey, destinationName) {
+            // 原有逻辑保持不变
+            const startLocation = document.getElementById('startLocationQuery').value;
+            
+            // 计算路径
+            const path = roadNetwork.shortestPath(startLocation, destinationKey);
+            
+            if (path.length === 0) {
+                return;
+            }
+            
+            // 显示路径详情
+            let totalDistance = 0;
+            let pathSteps = [];
+            
+            for (let i = 0; i < path.length - 1; i++) {
+                const fromNode = roadNetwork.nodes.get(path[i]);
+                const toNode = roadNetwork.nodes.get(path[i + 1]);
+
+                // 找到这两个节点之间的边
+                const edge = fromNode.edges.find(e => e.to === path[i + 1]);
+
+                if (edge) {
+                                        const distanceInMeters = edge.distance * 1000; // 转换为米
+                    totalDistance += distanceInMeters;
+                    
+                    // 找到对应的地点名称
+                    const fromSpot = roadNetwork.spots.find(spot => 
+                        roadNetwork.formatCoordinate(spot) === path[i]
+                    );
+                    
+                    const toSpot = roadNetwork.spots.find(spot => 
+                        roadNetwork.formatCoordinate(spot) === path[i + 1]
+                    );
+                    
+                    const fromName = fromSpot ? fromSpot.name : `节点(${path[i]})`;
+                    const toName = toSpot ? toSpot.name : `节点(${path[i + 1]})`;
+                    
+                    pathSteps.push({
+                        from: fromName,
+                        to: toName,
+                        distance: distanceInMeters
+                    });
+                }
+            }
+            
+            // 生成路径详情HTML
+            let html = `
+                <div class="path-info">
+                    <div class="path-summary">
+                        从 <strong>${startLocation}</strong> 到 <strong>${destinationName}</strong> 的路径
+                        <span class="distance-info">总距离: ${totalDistance.toFixed(1)} 米</span>
+                    </div>
+                    <div class="path-details">
+                        <ol>
+            `;
+            
+            pathSteps.forEach(step => {
+                html += `
+                    <li>从 ${step.from} 到 ${step.to}，距离 ${step.distance.toFixed(1)} 米</li>
+                `;
+            });
+            
+            html += `
+                        </ol>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('path-details').innerHTML = html;
+        }
+
+        // 从API获取数据
+        async function fetchData(url, type) {
+            // 原有逻辑保持不变
+            try {
+                debugLog(`从 ${url} 获取${type}数据`);
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP错误! 状态码: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                debugLog(`成功获取${type}数据，共 ${data.length} 条记录`);
+                return data;
+
+            } catch (error) {
+                console.error(`获取${type}数据时出错:`, error);
+                throw error;
+            }
+        }
+
+        // 主程序
+        document.addEventListener('DOMContentLoaded', async function() {
+            // 原有逻辑保持不变
+            try {
+                // 创建路网实例
+                roadNetwork = new RoadNetwork();
+
+                // 从URL参数获取目的地名称
+                const urlParams = new URLSearchParams(window.location.search);
+                const destinationName = urlParams.get('destinationName') || '北邮'; // 默认为北邮
+                
+                // 根据目的地名称确定API端点
+                let pathEndpoint, spotEndpoint;
+                
+                if (destinationName === '北海' || destinationName === '北海公园') {
+                    pathEndpoint = '/api/beihai_walkdistance';
+                    spotEndpoint = '/api/beihai_spot_message';
+                } else { // 默认使用北邮数据
+                    pathEndpoint = '/api/walkdistance';
+                    spotEndpoint = '/api/bupt_spot_message';
+                }
+
+                // 从API获取数据
+                const [pathData, spotData] = await Promise.all([
+                    fetchData(pathEndpoint, 'path'),
+                    fetchData(spotEndpoint, 'spot')
+                ]);
+
+                // 处理地点数据
+                debugLog('加载地点数据...');
+                spotData.forEach(item => {
+                    const spot = {
+                        name: item.name,
+                        lng: parseFloat(item.lng),
+                        lat: parseFloat(item.lat),
+                        type: item.type,
+                        marker: null
+                    };
+
+                    roadNetwork.addSpot(spot);
+                });
+
+                // 处理路径数据
+                debugLog('加载路径数据...');
+                pathData.forEach(item => {
+                    roadNetwork.addPathSegment(
+                        `${item.origin2},${item.origin1}`,
+                        `${item.destination2},${item.destination1}`,
+                        item.distance / 1000 // 转换为公里
+                    );
+                });
+
+                debugLog('数据加载完成');
+                debugLog(`路网包含 ${roadNetwork.nodes.size} 个节点`);
+                debugLog(`已添加 ${roadNetwork.spots.length} 个地点`);
+
+            } catch (error) {
+                console.error('加载失败:', error);
+                alert('数据加载失败: ' + error.message);
+            }
+        });
+    </script>
+</body>
+</html>

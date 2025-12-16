@@ -1,0 +1,1673 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <title>校园地图导航系统</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+    <style>
+        body,
+        html,
+        #container {
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            font-family: "微软雅黑";
+        }
+        #input-container {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 10;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 15px;
+            border-radius: 5px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 400px;
+        }
+        input, button, select {
+            margin: 2px;
+            padding: 8px;
+            font-size: 14px;
+        }
+       .info {
+            z-index: 999;
+            width: auto;
+            min-width: 22rem;
+            padding: .75rem 1.25rem;
+            margin-left: 1.25rem;
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: .25rem;
+            font-size: 14px;
+            color: #666;
+            box-shadow: 0 2px 6px 0 rgba(27, 142, 236, 0.3);
+            width: 400px;
+        }
+
+        /* 侧边栏样式 */
+        #sidebar {
+            position: fixed;
+            left: -250px;
+            top: 0;
+            width: 250px;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            z-index: 100;
+            transition: all 0.3s;
+            overflow-y: auto;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+        }
+
+        #sidebar.active {
+            left: 0;
+        }
+
+        #toggle-sidebar {
+            position: fixed;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 101;
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            padding: 10px;
+            border-radius: 0 5px 5px 0;
+            cursor: pointer;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+        }
+
+        #spot-list {
+            padding: 15px;
+            list-style-type: none;
+        }
+
+       .spot-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+       .spot-name {
+            flex: 1;
+            cursor: pointer;
+            padding: 5px;
+        }
+
+       .spot-name:hover {
+            background-color: #f5f5f5;
+        }
+
+       .spot-actions {
+            display: flex;
+        }
+
+       .spot-actions button {
+            margin-left: 5px;
+            padding: 2px 5px;
+            font-size: 12px;
+            border: none;
+            background: #f0f0f0;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+       .spot-actions button:hover {
+            background: #e0e0e0;
+        }
+
+        #sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        #edit-toggle {
+            background: none;
+            border: none;
+            color: #666;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        #edit-toggle:hover {
+            color: #333;
+        }
+
+       .input-row {
+            display: flex;
+            align-items: center;
+        }
+
+       .input-row label {
+            min-width: 60px;
+        }
+
+       .spot-type {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+            color: white;
+            margin-left: 10px;
+        }
+       .type-infrastructure { background-color: #3498db; }
+       .type-building { background-color: #2ecc71; }
+       .type-facility { background-color: #e67e22; }
+       .type-other { background-color: #9b59b6; }
+
+       .traffic-type {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+            color: white;
+        }
+       .traffic-drive { background-color: #1E88E5; }
+       .traffic-ride { background-color: #43A047; }
+       .traffic-walk { background-color: #FB8C00; }
+
+        #path-result {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 10;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 5px;
+            width: 400px;
+            /* 关键样式：固定高度并开启滚动 */
+            height: calc(100vh - 120px); /* 占视口高度，减去顶部间距 */
+            overflow-y: auto; /* 垂直滚动条 */
+            box-shadow: 0 2px 6px 0 rgba(0,0,0,0.3);
+        }
+
+        #path-details-container {
+            height: 100%; /* 撑满父容器高度 */
+        }
+
+       .loading {
+            margin: 20px;
+            font-style: italic;
+            color: #666;
+        }
+
+       .error {
+            color: #e74c3c;
+            margin: 20px;
+        }
+
+       .location-suggestions {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            margin-top: 5px;
+            background-color: white;
+            z-index: 100;
+            position: absolute;
+            width: calc(100% - 40px);
+            max-width: 400px;
+        }
+
+       .location-item {
+            padding: 8px;
+            border: 1px solid #ddd;
+            margin: 5px 0;
+            cursor: pointer;
+            background-color: #f9f9f9;
+        }
+
+       .location-item:hover {
+            background-color: #e9e9e9;
+        }
+        
+        /* 新增途径点相关样式 */
+        #waypoint-list {
+            margin-top: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        
+        .waypoint-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px;
+            background-color: #f5f5f5;
+            margin-bottom: 5px;
+            border-radius: 3px;
+        }
+        
+        .waypoint-index {
+            background-color: #3388ff;
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-right: 10px;
+        }
+        
+        .waypoint-name {
+            flex: 1;
+        }
+        
+        .remove-waypoint {
+            color: #e74c3c;
+            cursor: pointer;
+        }
+        
+        /* 新增模式切换样式 */
+        .mode-toggle {
+            display: flex;
+            margin-bottom: 10px;
+        }
+        
+        .mode-button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            cursor: pointer;
+            background-color: #f0f0f0;
+            color: #333;
+        }
+        
+        .mode-button.active {
+            background-color: #3388ff;
+            color: white;
+        }
+    </style>
+    <script src="//api.map.baidu.com/api?type=webgl&v=1.0&ak=8tkMpodF40OEhWp50m22ivuCxDu0rIJA"></script>
+</head>
+<body>
+    <div id="container"></div>
+    <div id="sidebar">
+        <div id="sidebar-header">
+            <h3 style="margin: 0;">地点列表</h3>
+            <button id="edit-toggle" onclick="toggleEditMode()">编辑</button>
+        </div>
+        <ul id="spot-list">
+            <!-- 地点将通过JavaScript动态添加 -->
+        </ul>
+    </div>
+    <button id="toggle-sidebar" onclick="toggleSidebar()">☰</button>
+
+    <div id="input-container">
+        <!-- 新增模式切换按钮 -->
+        <div class="mode-toggle">
+            <button id="two-point-mode" class="mode-button active" onclick="switchMode('two-point')">两点路径</button>
+            <button id="multi-point-mode" class="mode-button" onclick="switchMode('multi-point')">多点路径</button>
+        </div>
+
+        <div class="input-row">
+            <label for="fromLocation">起点:</label>
+            <input type="text" id="fromLocation" placeholder="输入地点名称" style="flex:1" oninput="suggestLocations('from')"/>
+            <div id="fromSuggestions" class="location-suggestions" style="display: none;"></div>
+        </div>
+
+        <div class="input-row">
+            <label for="toLocation">终点:</label>
+            <input type="text" id="toLocation" placeholder="输入地点名称" style="flex:1" oninput="suggestLocations('to')"/>
+            <div id="toSuggestions" class="location-suggestions" style="display: none;"></div>
+        </div>
+
+        <!-- 新增途径点输入框 -->
+        <div id="waypoint-controls" style="display: none;">
+            <div class="input-row">
+                <label for="waypointLocation">途径点:</label>
+                <input type="text" id="waypointLocation" placeholder="输入途径点名称" style="flex:1" oninput="suggestLocations('waypoint')"/>
+                <button onclick="addWaypoint()">添加</button>
+                <div id="waypointSuggestions" class="location-suggestions" style="display: none;"></div>
+            </div>
+
+            <!-- 新增途径点列表显示 -->
+            <div id="waypoint-list">
+                <div style="color: #666; font-style: italic; padding: 5px;">暂无途径点</div>
+            </div>
+        </div>
+
+        <div class="input-row">
+            <label for="trafficType">交通方式:</label>
+            <select id="trafficType" style="flex:1">
+                <option value="all">所有方式</option>
+                <option value="drive">驾车</option>
+                <option value="ride">自行车</option>
+                <option value="walk">步行</option>
+            </select>
+        </div>
+
+        <!-- 新增策略选择 -->
+        <div class="input-row">
+            <label for="strategyType">策略:</label>
+            <select id="strategyType" style="flex:1">
+                <option value="distance">最短距离</option>
+                <option value="time">最短时间</option>
+            </select>
+        </div>
+
+        <div style="display: flex; gap: 5px;">
+            <button id="route-button" onclick="findRoute()">规划路线</button>
+            <button onclick="clearRoute()" style="flex:1">清除路线</button>
+        </div>
+    </div>
+
+    <div id="path-result">
+    <h3 style="margin-top: 0;">路线详情</h3>
+    <div id="path-details-container"> <!-- 包裹容器，用于滚动 -->
+        <div id="path-details"></div> <!-- 路径详情内容 -->
+    </div>
+</div>
+
+    <script>
+        // 调试模式
+        let debugMode = false;
+        // 当前路径模式：'two-point' 或 'multi-point'
+        let currentMode = 'two-point';
+        // 途径点数组
+        let waypoints = [];
+
+        // 调试日志函数
+        function debugLog(...args) {
+            if (debugMode) {
+                console.log(...args);
+            }
+        }
+
+        // 切换调试模式
+        function toggleDebug() {
+            debugMode = !debugMode;
+            debugLog(`调试模式已${debugMode? '开启' : '关闭'}`);
+        }
+
+        // 更新交通方式选择器的显示文本
+        function updateTrafficTypeDisplay(isBeihaiPark) {
+            const trafficSelect = document.getElementById('trafficType');
+            const rideOption = Array.from(trafficSelect.options).find(o => o.value === 'ride');
+            
+            if (rideOption) {
+                rideOption.textContent = isBeihaiPark ? '电动车' : '自行车';
+            }
+            
+            // 更新基础速度
+            if (isBeihaiPark) {
+                roadNetwork.baseSpeeds.ride = 6; // 电动车速度 6m/s
+            } else {
+                roadNetwork.baseSpeeds.ride = 4; // 自行车速度 4m/s
+            }
+        }
+
+        class RoadNetwork {
+            constructor() {
+                this.nodes = new Map(); // 使用Map存储节点，键为"经度,纬度"字符串
+                this.spots = [];       // 地点列表
+                this.locationMap = new Map(); // 地点名称到坐标的映射
+                // 定义不同交通方式的基础速度（米/秒）
+                this.baseSpeeds = {
+                    'walk': 1.2,
+                    'ride': 4,
+                    'drive': 10
+                };
+            }
+
+            // 计算多点最短路径（使用贪心算法近似求解）
+    multiPointShortestPath(points, trafficType = 'all', strategy = 'distance') {
+        debugLog('========================================');
+        debugLog(`开始计算多点路径: ${points.join(' -> ')}, 交通方式: ${trafficType}, 策略: ${strategy}`);
+        debugLog('========================================');
+
+        // 验证所有点都存在
+        const validPoints = [];
+        for (const point of points) {
+            const node = this.findNodeByLocationName(point) || 
+                         (point.includes(',') ? this.findNodeByCoordinate(...point.split(',').map(Number)) : null);
+            
+            if (!node) {
+                debugLog(`无法找到节点: ${point}`);
+                return [];
+            }
+            validPoints.push(this.formatCoordinate(node));
+        }
+
+        if (validPoints.length < 2) {
+            debugLog('至少需要两个点才能计算路径');
+            return [];
+        }
+
+        // 使用最近邻算法近似求解TSP问题
+        let remainingPoints = [...validPoints];
+        const path = [remainingPoints.shift()]; // 从第一个点开始
+
+        while (remainingPoints.length > 0) {
+            let closestPoint = null;
+            let closestValue = Infinity;
+            let closestIndex = -1;
+
+            // 在当前路径的最后一个点和剩余点之间寻找最近的点
+            for (let i = 0; i < remainingPoints.length; i++) {
+                let subPath;
+                if (strategy === 'time') {
+                    subPath = this.shortestTimePath(path[path.length - 1], remainingPoints[i], trafficType);
+                } else {
+                    subPath = this.shortestPath(path[path.length - 1], remainingPoints[i], trafficType);
+                }
+                
+                if (subPath.length === 0) continue;
+
+                // 计算子路径的总值（距离或时间）
+                let totalValue = 0;
+                for (let j = 0; j < subPath.length - 1; j++) {
+                    const fromNode = this.nodes.get(subPath[j]);
+                    const edge = fromNode.edges.find(e => e.to === subPath[j + 1]);
+                    if (edge) {
+                        if (strategy === 'time') {
+                            const baseSpeed = this.baseSpeeds[edge.traffic];
+                            const actualSpeed = baseSpeed * edge.congestion;
+                            totalValue += edge.distance / actualSpeed;
+                        } else {
+                            totalValue += edge.distance;
+                        }
+                    }
+                }
+
+                if (totalValue < closestValue) {
+                    closestValue = totalValue;
+                    closestPoint = remainingPoints[i];
+                    closestIndex = i;
+                }
+            }
+
+            if (closestPoint === null) {
+                debugLog('无法找到到下一个点的路径');
+                return [];
+            }
+
+            // 将最近的点添加到路径中
+            path.push(closestPoint);
+            remainingPoints.splice(closestIndex, 1);
+        }
+
+        // 现在我们需要连接所有点之间的最短路径
+        const fullPath = [];
+        for (let i = 0; i < path.length - 1; i++) {
+            let subPath;
+            if (strategy === 'time') {
+                subPath = this.shortestTimePath(path[i], path[i + 1], trafficType);
+            } else {
+                subPath = this.shortestPath(path[i], path[i + 1], trafficType);
+            }
+            
+            if (subPath.length === 0) {
+                debugLog(`无法找到从 ${path[i]} 到 ${path[i + 1]} 的路径`);
+                return [];
+            }
+
+            // 将子路径添加到完整路径中（避免重复添加连接点）
+            if (i > 0) {
+                fullPath.push(...subPath.slice(1));
+            } else {
+                fullPath.push(...subPath);
+            }
+        }
+
+        debugLog('多点路径计算完成:', fullPath);
+        return fullPath;
+    }
+    // 计算TSP路径（使用最近邻算法近似求解）
+    calculateTSPPath(points, trafficType = 'all', strategy = 'distance') {
+        debugLog('========================================');
+        debugLog(`开始计算TSP路径: ${points.join(' -> ')}, 交通方式: ${trafficType}, 策略: ${strategy}`);
+        debugLog('========================================');
+
+        // 验证所有点都存在
+        const validPoints = [];
+        for (const point of points) {
+            const node = this.findNodeByLocationName(point) || 
+                         (point.includes(',') ? this.findNodeByCoordinate(...point.split(',').map(Number)) : null);
+            
+            if (!node) {
+                debugLog(`无法找到节点: ${point}`);
+                return [];
+            }
+            validPoints.push(this.formatCoordinate(node));
+        }
+
+        if (validPoints.length < 2) {
+            debugLog('至少需要两个点才能计算路径');
+            return [];
+        }
+
+        const startPoint = validPoints[0];
+        let remainingPoints = validPoints.slice(1); // 排除起点
+        const path = [startPoint]; // 从起点开始
+
+        // 第一阶段：从起点出发，访问所有点
+        while (remainingPoints.length > 0) {
+            let closestPoint = null;
+            let closestDistance = Infinity;
+            let closestIndex = -1;
+
+            // 在当前路径的最后一个点和剩余点之间寻找最近的点
+            for (let i = 0; i < remainingPoints.length; i++) {
+                const subPath = this.shortestPath(path[path.length - 1], remainingPoints[i], trafficType);
+                if (subPath.length === 0) continue;
+
+                // 计算子路径总距离
+                const distance = this.calculatePathDistance(subPath);
+
+                if (distance < closestDistance) {
+                    closestDistance = distance;
+                    closestPoint = remainingPoints[i];
+                    closestIndex = i;
+                }
+            }
+
+            if (closestPoint === null) {
+                debugLog('无法找到到下一个点的路径');
+                return [];
+            }
+
+            // 将最近的点添加到路径中
+            path.push(closestPoint);
+            remainingPoints.splice(closestIndex, 1);
+        }
+
+        // 第二阶段：从最后一个点返回起点
+        const returnPath = this.shortestPath(path[path.length - 1], startPoint, trafficType);
+        if (returnPath.length === 0) {
+            debugLog('无法找到返回起点的路径');
+            return [];
+        }
+
+        // 输出返回路径的信息
+     debugLog(`找到返回起点的路径，长度: ${returnPath.length} 个节点`);
+        debugLog(`返回路径详情: ${returnPath.join(' -> ')}`);
+
+        // 合并路径（避免重复添加连接点）
+        const fullPath = [];
+        for (let i = 0; i < path.length - 1; i++) {
+            const subPath = this.shortestPath(path[i], path[i + 1], trafficType);
+            if (subPath.length === 0) {
+                debugLog(`无法找到从 ${path[i]} 到 ${path[i + 1]} 的路径`);
+                return [];
+            }
+            fullPath.push(...(i > 0 ? subPath.slice(1) : subPath));
+        }
+
+        // 添加返回路径（去掉第一个点，因为它已经是路径的最后一个点）
+        fullPath.push(...returnPath.slice(1));
+
+        debugLog('TSP路径计算完成:', fullPath);
+        return fullPath;
+    }
+            // 计算路径总距离
+    calculatePathDistance(path) {
+        let totalDistance = 0;
+        
+        for (let i = 0; i < path.length - 1; i++) {
+            const fromNode = this.nodes.get(path[i]);
+            const toKey = path[i + 1];
+            
+            // 找到连接这两个节点的边
+            const edge = fromNode.edges.find(e => e.to === toKey);
+            if (edge) {
+                totalDistance += edge.distance;
+            }
+        }
+        
+        return totalDistance;
+    }
+            // 添加路径段（动态创建节点）
+            addPathSegment(from, to, traffic, distance, congestion) {
+                // 解析坐标字符串
+                const fromCoord = this.parseCoordinate(from);
+                const toCoord = this.parseCoordinate(to);
+
+                const fromKey = this.formatCoordinate(fromCoord);
+                const toKey = this.formatCoordinate(toCoord);
+
+                // 创建或获取起点节点
+                if (!this.nodes.has(fromKey)) {
+                    this.nodes.set(fromKey, {
+                        lng: fromCoord.lng,
+                        lat: fromCoord.lat,
+                        edges: [] // 邻接边
+                    });
+                    debugLog(`创建新节点: ${fromKey}`);
+                }
+
+                // 创建或获取终点节点
+                if (!this.nodes.has(toKey)) {
+                    this.nodes.set(toKey, {
+                        lng: toCoord.lng,
+                        lat: toCoord.lat,
+                        edges: []
+                    });
+                    debugLog(`创建新节点: ${toKey}`);
+                }
+
+                // 添加双向边
+                this.nodes.get(fromKey).edges.push({
+                    to: toKey,
+                    traffic,
+                    distance,
+                    congestion
+                });
+
+                this.nodes.get(toKey).edges.push({
+                    to: fromKey,
+                    traffic,
+                    distance,
+                    congestion
+                });
+
+                debugLog(`添加路径: ${fromKey} <-> ${toKey}, 方式: ${traffic}, 距离: ${distance}km, 拥挤度: ${congestion}`);
+            }
+
+            // 解析坐标字符串
+            parseCoordinate(coordStr) {
+                coordStr = coordStr.trim().replace(/[()]/g, '');
+                let [first, second] = coordStr.split(',').map(Number);
+
+                // 自动修正经纬度顺序
+                if (first > 180 || second > 90) {
+                    debugLog(`自动修正坐标顺序: ${first},${second} -> ${second},${first}`);
+                    [first, second] = [second, first];
+                }
+
+                return { lng: first, lat: second };
+            }
+
+            // 格式化坐标为字符串
+            formatCoordinate(coord) {
+                return `${coord.lng.toFixed(6)},${coord.lat.toFixed(6)}`;
+            }
+
+            // 添加地点
+            addSpot(spot) {
+                // 验证经纬度顺序
+                if (spot.lng > 180 || spot.lat > 90) {
+                    debugLog(`自动修正地点经纬度顺序: ${spot.name} (${spot.lng},${spot.lat}) -> (${spot.lat},${spot.lng})`);
+                    [spot.lng, spot.lat] = [spot.lat, spot.lng];
+                }
+
+                this.spots.push(spot);
+                this.locationMap.set(spot.name.toLowerCase(), this.formatCoordinate(spot));
+                debugLog(`添加地点: ${spot.name} (${spot.lng.toFixed(6)},${spot.lat.toFixed(6)}), 类型: ${spot.type}`);
+            }
+
+            // 搜索地点
+            searchLocations(query) {
+                query = query.toLowerCase().trim();
+                return this.spots.filter(spot =>
+                    spot.name.toLowerCase().includes(query)
+                );
+            }
+
+            // 根据坐标查找节点
+            findNodeByCoordinate(lng, lat) {
+                const key = this.formatCoordinate({ lng, lat });
+                return this.nodes.get(key);
+            }
+
+            // 根据地点名称查找节点
+            findNodeByLocationName(name) {
+                const location = this.locationMap.get(name.toLowerCase());
+                if (!location) return null;
+
+                const [lng, lat] = location.split(',').map(Number);
+                return this.findNodeByCoordinate(lng, lat);
+            }
+
+            // 计算最短路径
+            shortestPath(from, to, trafficType = 'all') {
+                debugLog('========================================');
+                debugLog(`开始计算最短路径: ${from} -> ${to}, 交通方式: ${trafficType}`);
+                debugLog('========================================');
+
+                // 解析起点和终点
+                let fromNode, toNode;
+
+                // 如果是坐标格式
+                if (from.includes(',') && to.includes(',')) {
+                    const fromCoord = this.parseCoordinate(from);
+                    const toCoord = this.parseCoordinate(to);
+
+                    fromNode = this.findNodeByCoordinate(fromCoord.lng, fromCoord.lat);
+                    toNode = this.findNodeByCoordinate(toCoord.lng, toCoord.lat);
+                } else {
+                    // 否则视为地点名称
+                    fromNode = this.findNodeByLocationName(from);
+                    toNode = this.findNodeByLocationName(to);
+                }
+
+                // 验证节点存在
+                if (!fromNode || !toNode) {
+                    debugLog('无法找到节点:', from, to);
+                    return [];
+                }
+
+                // Dijkstra算法实现
+                const distances = new Map();
+                const previous = new Map();
+                const unvisited = new Set([...this.nodes.keys()]);
+
+                // 初始化
+                for (const key of this.nodes.keys()) {
+                    distances.set(key, Infinity);
+                    previous.set(key, null);
+                }
+                distances.set(this.formatCoordinate(fromNode), 0);
+
+                debugLog('初始化距离表:', Array.from(distances.entries()));
+                debugLog('起点:', this.formatCoordinate(fromNode));
+                debugLog('终点:', this.formatCoordinate(toNode));
+
+                while (unvisited.size > 0) {
+                    // 找到未访问的最小距离节点
+                    let currentKey = null;
+                    let minDistance = Infinity;
+
+                    for (const key of unvisited) {
+                        if (distances.get(key) < minDistance) {
+                            minDistance = distances.get(key);
+                            currentKey = key;
+                        }
+                    }
+
+                    debugLog(`当前节点: ${currentKey}, 最小距离: ${minDistance}`);
+
+                    if (currentKey === null || currentKey === this.formatCoordinate(toNode)) break;
+
+                    unvisited.delete(currentKey);
+                    const currentNode = this.nodes.get(currentKey);
+
+                    // 更新邻居距离
+                    for (const edge of currentNode.edges) {
+                        // 过滤交通方式
+                        if (trafficType !== 'all' && edge.traffic !== trafficType) {
+                            debugLog(`  跳过不符合交通方式的边: ${currentKey} -> ${edge.to}, 方式: ${edge.traffic}`);
+                            continue;
+                        }
+
+                        const distance = distances.get(currentKey) + edge.distance;
+
+                        debugLog(`  检查邻居: ${edge.to}, 当前距离: ${distances.get(edge.to)}, 新距离: ${distance}`);
+
+                        if (distance < distances.get(edge.to)) {
+                            distances.set(edge.to, distance);
+                            previous.set(edge.to, currentKey);
+                            debugLog(`    更新距离: ${edge.to} = ${distance}, 前驱: ${currentKey}`);
+                        }
+                    }
+                }
+
+                // 构建路径
+                const path = [];
+                let currentKey = this.formatCoordinate(toNode);
+
+                debugLog('开始构建路径...');
+                debugLog('前驱节点表:', Array.from(previous.entries()));
+
+                while (currentKey && currentKey !== this.formatCoordinate(fromNode)) {
+                    path.unshift(currentKey);
+                    currentKey = previous.get(currentKey);
+                    debugLog(`当前路径节点: ${currentKey}`);
+                }
+
+                if (currentKey === this.formatCoordinate(fromNode)) {
+                    path.unshift(currentKey);
+                    debugLog('找到完整路径:', path);
+                    return path;
+                }
+
+                debugLog('无法构建完整路径');
+                return [];
+            }
+
+            // 计算最短时间路径
+            shortestTimePath(from, to, trafficType = 'all') {
+                debugLog('========================================');
+                debugLog(`开始计算最短时间路径: ${from} -> ${to}, 交通方式: ${trafficType}`);
+                debugLog('========================================');
+
+                // 解析起点和终点
+                let fromNode, toNode;
+
+                // 如果是坐标格式
+                if (from.includes(',') && to.includes(',')) {
+                    const fromCoord = this.parseCoordinate(from);
+                    const toCoord = this.parseCoordinate(to);
+
+                    fromNode = this.findNodeByCoordinate(fromCoord.lng, fromCoord.lat);
+                    toNode = this.findNodeByCoordinate(toCoord.lng, toCoord.lat);
+                } else {
+                    // 否则视为地点名称
+                    fromNode = this.findNodeByLocationName(from);
+                    toNode = this.findNodeByLocationName(to);
+                }
+
+                // 验证节点存在
+                if (!fromNode || !toNode) {
+                    debugLog('无法找到节点:', from, to);
+                    return [];
+                }
+
+                // Dijkstra算法实现
+                const times = new Map();
+                const previous = new Map();
+                const unvisited = new Set([...this.nodes.keys()]);
+
+                // 初始化
+                for (const key of this.nodes.keys()) {
+                    times.set(key, Infinity);
+                    previous.set(key, null);
+                }
+                times.set(this.formatCoordinate(fromNode), 0);
+
+                debugLog('初始化时间表:', Array.from(times.entries()));
+                debugLog('起点:', this.formatCoordinate(fromNode));
+                debugLog('终点:', this.formatCoordinate(toNode));
+
+                while (unvisited.size > 0) {
+                    // 找到未访问的最小时间节点
+                    let currentKey = null;
+                    let minTime = Infinity;
+
+                    for (const key of unvisited) {
+                        if (times.get(key) < minTime) {
+                            minTime = times.get(key);
+                            currentKey = key;
+                        }
+                    }
+
+                    debugLog(`当前节点: ${currentKey}, 最小时间: ${minTime}`);
+
+                    if (currentKey === null || currentKey === this.formatCoordinate(toNode)) break;
+
+                    unvisited.delete(currentKey);
+                    const currentNode = this.nodes.get(currentKey);
+
+                    // 更新邻居时间
+                    for (const edge of currentNode.edges) {
+                        // 过滤交通方式
+                        if (trafficType !== 'all' && edge.traffic !== trafficType) {
+                            debugLog(`  跳过不符合交通方式的边: ${currentKey} -> ${edge.to}, 方式: ${edge.traffic}`);
+                            continue;
+                        }
+
+                        // 计算实际速度（考虑拥挤度）
+                        const baseSpeed = this.baseSpeeds[edge.traffic];
+                        const actualSpeed = baseSpeed * edge.congestion;
+                        
+                        // 计算时间（距离/速度）
+                        const time = times.get(currentKey) + (edge.distance / actualSpeed);
+
+                        debugLog(`  检查邻居: ${edge.to}, 当前时间: ${times.get(edge.to)}, 新时间: ${time}`);
+
+                        if (time < times.get(edge.to)) {
+                            times.set(edge.to, time);
+                            previous.set(edge.to, currentKey);
+                            debugLog(`    更新时间: ${edge.to} = ${time}, 前驱: ${currentKey}`);
+                        }
+                    }
+                }
+
+                // 构建路径
+                const path = [];
+                let currentKey = this.formatCoordinate(toNode);
+
+                debugLog('开始构建路径...');
+                debugLog('前驱节点表:', Array.from(previous.entries()));
+
+                while (currentKey && currentKey !== this.formatCoordinate(fromNode)) {
+                    path.unshift(currentKey);
+                    currentKey = previous.get(currentKey);
+                    debugLog(`当前路径节点: ${currentKey}`);
+                }
+
+                if (currentKey === this.formatCoordinate(fromNode)) {
+                    path.unshift(currentKey);
+                    debugLog('找到完整路径:', path);
+                    return path;
+                }
+
+                debugLog('无法构建完整路径');
+                return [];
+            }
+        }
+
+        // 全局变量
+        var map = new BMapGL.Map('container');
+        var defaultPoint = new BMapGL.Point(116.404, 39.925);  // 默认中心点：北京
+        var roadNetwork = null;
+        var isEditMode = false;
+        var currentRoute = null;
+
+        // 初始化地图
+        function initializeMap() {
+            map.centerAndZoom(defaultPoint, 15);  // 初始化地图
+            map.enableScrollWheelZoom(true);     // 开启鼠标滚轮缩放
+
+            // 添加比例尺控件
+            var scaleCtrl = new BMapGL.ScaleControl();
+            map.addControl(scaleCtrl);
+
+            // 添加缩放控件
+            var zoomCtrl = new BMapGL.ZoomControl();
+            map.addControl(zoomCtrl);
+        }
+
+        // 添加地点到侧边栏
+        function addSpotToSidebar(spot, index) {
+            var spotList = document.getElementById('spot-list');
+            var listItem = document.createElement('li');
+            listItem.className = 'spot-item';
+            listItem.dataset.index = index;
+
+            var nameSpan = document.createElement('span');
+            nameSpan.className = 'spot-name';
+            nameSpan.textContent = spot.name;
+            nameSpan.onclick = function() {
+                if (!isEditMode) {
+                    centerOnSpot(spot.lat, spot.lng);
+                }
+            };
+
+            var actionsDiv = document.createElement('div');
+            actionsDiv.className = 'spot-actions';
+
+            var editBtn = document.createElement('button');
+            editBtn.textContent = '编辑';
+            editBtn.onclick = function(e) {
+                e.stopPropagation();
+                editSpot(index);
+            };
+
+            var deleteBtn = document.createElement('button');
+            deleteBtn.textContent = '删除';
+            deleteBtn.onclick = function(e) {
+                e.stopPropagation();
+                deleteSpot(index);
+            };
+
+            actionsDiv.appendChild(editBtn);
+            actionsDiv.appendChild(deleteBtn);
+
+            listItem.appendChild(nameSpan);
+            listItem.appendChild(actionsDiv);
+            spotList.appendChild(listItem);
+        }
+
+        // 编辑景点
+        function editSpot(index) {
+            var spot = roadNetwork.spots[index];
+            var newName = prompt('请输入新的景点名称', spot.name);
+            var newLng = prompt('请输入新的经度', spot.lng);
+            var newLat = prompt('请输入新的纬度', spot.lat);
+            var newType = prompt('请输入新的景点类型', spot.type);
+
+            if (!newName || isNaN(parseFloat(newLng)) || isNaN(parseFloat(newLat))) {
+                alert('输入无效，未进行修改');
+                return;
+            }
+
+            // 更新景点信息
+            spot.name = newName;
+            spot.lng = parseFloat(newLng);
+            spot.lat = parseFloat(newLat);
+            spot.type = newType || '其他';
+
+            // 更新地图标记
+            map.removeOverlay(spot.marker);
+            spot.marker = createMarker(spot);
+
+            // 更新地点列表
+            renderSpotList();
+
+            // 更新locationMap
+            roadNetwork.locationMap.delete(spot.name.toLowerCase());
+            roadNetwork.locationMap.set(spot.name.toLowerCase(), roadNetwork.formatCoordinate(spot));
+
+            alert('景点信息已更新');
+        }
+
+        // 显示地点建议
+        function suggestLocations(inputId) {
+            const input = document.getElementById(`${inputId}Location`);
+            const suggestions = document.getElementById(`${inputId}Suggestions`);
+            const query = input.value;
+
+            if (!query || query.length < 2 || !roadNetwork) {
+                suggestions.style.display = 'none';
+                return;
+            }
+
+            const results = roadNetwork.searchLocations(query);
+
+            if (results.length === 0) {
+                suggestions.style.display = 'none';
+                return;
+            }
+
+            suggestions.innerHTML = '';
+            results.forEach(spot => {
+                const item = document.createElement('div');
+                item.className = 'location-item';
+                item.innerHTML = `${spot.name} <span class="spot-type type-${getTypeClass(spot.type)}">${spot.type}</span>`;
+                item.onclick = function() {
+                    input.value = spot.name;
+                    suggestions.style.display = 'none';
+                };
+                suggestions.appendChild(item);
+            });
+
+            suggestions.style.display = 'block';
+        }
+
+        // 获取地点类型的CSS类
+        function getTypeClass(type) {
+            if (type === '基础设施') return 'infrastructure';
+            if (type === '建筑物') return 'building';
+            if (type === '设施') return 'facility';
+            return 'other';
+        }
+
+        function getTrafficLabel(trafficType) {
+        const isBeihai = document.getElementById('trafficType').querySelector('option[value="ride"]').textContent === '电动车';
+        
+        switch(trafficType) {
+            case 'drive':
+                return '驾车';
+            case 'ride':
+                return isBeihai ? '电动车' : '自行车';
+            case 'walk':
+                return '步行';
+            default:
+                return trafficType;
+        }
+    }
+
+        // 获取交通方式徽章
+        function getTrafficBadge(trafficType) {
+            const label = getTrafficLabel(trafficType);
+            return `<span class="traffic-type traffic-${trafficType}">${label}</span>`;
+        }
+
+        // 切换路径模式
+        function switchMode(mode) {
+            if (mode === currentMode) return;
+            
+            currentMode = mode;
+            
+            // 更新按钮样式
+            document.getElementById('two-point-mode').classList.toggle('active', mode === 'two-point');
+            document.getElementById('multi-point-mode').classList.toggle('active', mode === 'multi-point');
+            
+            // 显示/隐藏途径点控件
+            document.getElementById('waypoint-controls').style.display = mode === 'multi-point' ? 'block' : 'none';
+            
+            // 如果切换到两点模式，清空途径点
+            if (mode === 'two-point') {
+                waypoints = [];
+                renderWaypointList();
+            }
+            
+            // 清除当前路线
+            clearRoute();
+            
+            debugLog(`切换到${mode === 'two-point' ? '两点' : '多点'}路径模式`);
+        }
+
+        // 添加途径点
+        function addWaypoint() {
+            const waypointInput = document.getElementById('waypointLocation');
+            const waypointName = waypointInput.value.trim();
+
+            if (!waypointName) {
+                alert('请输入途径点名称');
+                return;
+            }
+
+            // 检查地点是否存在
+            const spot = roadNetwork.searchLocations(waypointName)[0];
+            if (!spot) {
+                alert('未找到该地点，请重新输入');
+                return;
+            }
+
+            // 检查是否已添加
+            if (waypoints.includes(waypointName)) {
+                alert('该地点已添加为途径点');
+                return;
+            }
+
+            // 添加到途径点列表
+            waypoints.push(waypointName);
+            
+            // 显示途径点
+            renderWaypointList();
+            
+            // 清空输入框
+            waypointInput.value = '';
+            
+            // 隐藏建议框
+            document.getElementById('waypointSuggestions').style.display = 'none';
+            
+            // 提示用户
+            alert(`已添加途径点: ${waypointName}`);
+        }
+
+        // 移除途径点
+        function removeWaypoint(index) {
+            waypoints.splice(index, 1);
+            renderWaypointList();
+        }
+
+        // 渲染途径点列表
+        function renderWaypointList() {
+            const waypointList = document.getElementById('waypoint-list');
+            waypointList.innerHTML = '';
+            
+            if (waypoints.length === 0) {
+                waypointList.innerHTML = '<div style="color: #666; font-style: italic; padding: 5px;">暂无途径点</div>';
+                return;
+            }
+            
+            waypoints.forEach((waypoint, index) => {
+                const spot = roadNetwork.searchLocations(waypoint)[0];
+                if (!spot) return;
+                
+                const item = document.createElement('div');
+                item.className = 'waypoint-item';
+                
+                const indexSpan = document.createElement('div');
+                indexSpan.className = 'waypoint-index';
+                indexSpan.textContent = (index + 1);
+                
+                const nameSpan = document.createElement('div');
+                nameSpan.className = 'waypoint-name';
+                nameSpan.textContent = spot.name;
+                
+                const removeBtn = document.createElement('div');
+                removeBtn.className = 'remove-waypoint';
+                removeBtn.innerHTML = '<i class="fa fa-times"></i>';
+                removeBtn.onclick = () => removeWaypoint(index);
+                
+                item.appendChild(indexSpan);
+                item.appendChild(nameSpan);
+                item.appendChild(removeBtn);
+                
+                waypointList.appendChild(item);
+            });
+        }
+
+        // 规划路线（统一入口，根据模式调用不同算法）
+        function findRoute() {
+            const fromLocation = document.getElementById('fromLocation').value.trim();
+            const toLocation = document.getElementById('toLocation').value.trim();
+            const trafficType = document.getElementById('trafficType').value;
+            const strategyType = document.getElementById('strategyType').value;
+
+            // 验证输入
+            if (!fromLocation || !toLocation) {
+                alert('请输入起点和终点名称');
+                return;
+            }
+
+            if (!roadNetwork) {
+                alert('路网数据未加载');
+                return;
+            }
+
+            // 清除当前路线
+            clearRoute();
+
+            if (currentMode === 'two-point') {
+                // 两点路径计算
+                let path;
+                
+                // 根据策略类型选择算法
+                if (strategyType === 'distance') {
+                    // 使用现有的最短距离算法
+                    path = roadNetwork.shortestPath(fromLocation, toLocation, trafficType);
+                } else {
+                    // 使用最短时间算法
+                    path = roadNetwork.shortestTimePath(fromLocation, toLocation, trafficType);
+                }
+                
+                if (path.length === 0) {
+                    alert('无法找到从起点到终点的路径');
+                    return;
+                }
+                
+                // 绘制路径
+                drawPath(path, trafficType);
+                
+                // 显示路径详情
+                displayPathDetails(path, trafficType, strategyType);
+                
+                alert(`两点路径规划完成（策略：${strategyType === 'distance' ? '最短距离' : '最短时间'}`);
+            } else {
+                // 多点路径计算
+                if (waypoints.length === 0) {
+                    alert('TSP路径模式下，请至少添加一个途径点');
+                    return;
+                }
+                
+                // 构建完整的点列表（起点 + 途径点）
+                const allPoints = [fromLocation, ...waypoints];
+                
+                // 使用multiPointShortestPath方法计算路径
+                const path = roadNetwork.calculateTSPPath(allPoints, trafficType, strategyType);
+                
+                if (path.length === 0) {
+                    alert('无法找到连接所有点并返回起点的路径');
+                    return;
+                }
+                
+                // 绘制路径
+                drawPath(path, trafficType);
+                
+                // 显示路径详情
+                displayPathDetails(path, trafficType, strategyType);
+                
+                alert(`TSP路径规划完成，共经过 ${waypoints.length} 个途径点并返回起点（策略：${strategyType === 'distance' ? '最短距离' : '最短时间'}）`);
+            }
+        }
+
+        // 绘制路径
+        function drawPath(path, trafficType) {
+            if (!path || path.length < 2) return;
+
+            // 创建路径点数组
+            const points = [];
+            for (const nodeKey of path) {
+                const [lng, lat] = nodeKey.split(',').map(Number);
+                points.push(new BMapGL.Point(lng, lat));
+            }
+
+            // 设置路径样式 - 确保颜色与交通方式对应
+            let color = '#3388ff';
+            let weight = 3;
+            if (trafficType === 'drive') {
+                color = '#1E88E5'; // 深蓝色
+                weight = 5;
+            } else if (trafficType === 'ride') {
+                color = '#43A047'; // 深绿色
+                weight = 4;
+            } else if (trafficType === 'walk') {
+                color = '#FB8C00'; // 深橙色
+                weight = 3;
+            }
+
+            // 创建折线
+            currentRoute = new BMapGL.Polyline(points, {
+                strokeColor: color,
+                strokeWeight: weight,
+                strokeOpacity: 0.8
+            });
+
+            // 添加到地图
+            map.addOverlay(currentRoute);
+
+            // 调整视图以显示整个路径
+            map.setViewport(points);
+
+            // 显示路径结果面板
+            document.getElementById('path-result').style.display = 'block';
+        }
+
+        // 显示路径详情
+        function displayPathDetails(path, trafficType, strategyType) {
+            let totalDistance = 0;
+            let totalTime = 0;
+            let html = '<div style="margin-bottom:10px;"><strong>路径概览:</strong> ';
+            let segmentStarts = [];
+            let currentSegmentStart = null;
+            
+            for (let i = 0; i < path.length - 1; i++) {
+                const fromNode = roadNetwork.nodes.get(path[i]);
+                const toNode = roadNetwork.nodes.get(path[i + 1]);
+
+                // 找到这两个节点之间的边
+                const edges = fromNode.edges.filter(edge => edge.to === path[i + 1]);
+
+                // 根据交通方式筛选
+                let filteredEdges = edges;
+                if (trafficType !== 'all') {
+                    filteredEdges = edges.filter(edge => edge.traffic === trafficType);
+                }
+
+                // 选择最短的边
+                if (filteredEdges.length > 0) {
+                    const edge = filteredEdges.reduce((min, e) => e.distance < min.distance ? e : min);
+                    const distanceInMeters = edge.distance; // 转换为米
+
+                    // 计算时间（考虑拥挤度）
+                    const baseSpeed = roadNetwork.baseSpeeds[edge.traffic];
+                    const actualSpeed = baseSpeed * edge.congestion;
+                    const timeInSeconds = distanceInMeters / actualSpeed;
+
+                    // 尝试找到地点名称
+                    let fromName = findLocationName(path[i]);
+                    let toName = findLocationName(path[i + 1]);
+
+                    // 如果是新段落的开始
+                    if (i === 0 || (fromName && fromName !== currentSegmentStart)) {
+                        currentSegmentStart = fromName || formatCoordinateForDisplay(path[i]);
+                        segmentStarts.push(currentSegmentStart);
+                    }
+
+                    html += `${fromName || formatCoordinateForDisplay(path[i])} → ${toName || formatCoordinateForDisplay(path[i + 1])} ${getTrafficBadge(edge.traffic)} ${distanceInMeters.toFixed(0)} m`;
+                    
+                    if (strategyType === 'time') {
+                        html += ` (${timeInSeconds.toFixed(1)}s)`;
+                    }
+                    
+                    html += '<br>';
+                    
+                    totalDistance += distanceInMeters;
+                    totalTime += timeInSeconds;
+                }
+            }
+
+            html += `</div><div><strong>总距离:</strong> ${totalDistance.toFixed(0)} m`;
+            
+            if (strategyType === 'time') {
+                html += `, <strong>预计时间:</strong> ${totalTime.toFixed(1)} 秒`;
+            }
+            
+            html += '</div>';
+
+            document.getElementById('path-details').innerHTML = html;
+        }
+
+        // 辅助函数：根据坐标查找地点名称
+        function findLocationName(coordStr) {
+            for (const [name, coord] of roadNetwork.locationMap.entries()) {
+                if (coord === coordStr) {
+                    return name;
+                }
+            }
+            return null;
+        }
+
+        // 格式化坐标显示
+        function formatCoordinateForDisplay(coordStr) {
+            const [lng, lat] = coordStr.split(',');
+            return `${lat}, ${lng}`;
+        }
+
+        // 清除路线
+        function clearRoute() {
+            if (currentRoute) {
+                map.removeOverlay(currentRoute);
+                currentRoute = null;
+            }
+            document.getElementById('path-result').style.display = 'none';
+        }
+
+        // 定位到指定地点
+        function centerOnSpot(lat, lng) {
+            var point = new BMapGL.Point(lng, lat);
+            map.centerAndZoom(point, 18);
+
+            // 添加一个动画效果
+            map.panTo(point, {
+                noAnimation: false,
+                animationDuration: 1000,
+                animationOptions: {
+                    delay: 100,
+                    duration: 1000,
+                    easing: 'in-out'
+                }
+            });
+        }
+
+        // 切换侧边栏显示/隐藏
+        function toggleSidebar() {
+            var sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('active');
+        }
+
+        // 切换编辑模式
+        function toggleEditMode() {
+            isEditMode = !isEditMode;
+            var sidebar = document.getElementById('sidebar');
+            var editBtn = document.getElementById('edit-toggle');
+
+            if (isEditMode) {
+                sidebar.classList.add('edit-mode');
+                editBtn.textContent = '完成';
+            } else {
+                sidebar.classList.remove('edit-mode');
+                editBtn.textContent = '编辑';
+            }
+        }
+
+        // 删除地点
+        function deleteSpot(index) {
+            if (confirm('确定要删除这个地点吗？')) {
+                // 从地图上移除标记
+                map.removeOverlay(roadNetwork.spots[index].marker);
+                // 从数组中移除
+                roadNetwork.spots.splice(index, 1);
+                // 重新渲染侧边栏
+                renderSpotList();
+            }
+        }
+
+        // 重新渲染地点列表
+        function renderSpotList() {
+            var spotList = document.getElementById('spot-list');
+            spotList.innerHTML = '';
+
+            roadNetwork.spots.forEach((spot, index) => {
+                addSpotToSidebar(spot, index);
+            });
+        }
+
+        // 从API获取数据
+        async function fetchData(url, type) {
+            try {
+                debugLog(`从 ${url} 获取${type}数据`);
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP错误! 状态码: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                debugLog(`成功获取${type}数据，共 ${data.length} 条记录`);
+                return data;
+
+            } catch (error) {
+                console.error(`获取${type}数据时出错:`, error);
+                throw error;
+            }
+        }
+
+        async function readLastRowName(url) {
+        try {
+            console.log(`请求 URL: ${url}`);
+            const response = await fetch(url);
+
+            if (!response.ok) {
+            // 尝试读取后端返回的错误详情
+            const errorData = await response.json().catch(() => ({}));
+            console.error('后端错误详情:', errorData);
+            throw new Error(`HTTP错误! 状态码: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log('服务器返回数据:', data);
+
+            if (!data || data.length === 0) {
+            console.log('无数据返回');
+            return null;
+            }
+
+            console.log('读取到最后一行数据:', data[0].name);
+            return data[0].name;
+        } catch (error) {
+            console.error('读取数据失败:', error);
+            throw error;
+        }
+        }
+
+        // 主程序
+        document.addEventListener('DOMContentLoaded', async function() {
+            initializeMap();
+            let isBeihaiPark = false;
+            try {
+                // 创建路网实例
+                roadNetwork = new RoadNetwork();
+                const lastNameLink = await readLastRowName('/api/temporal');
+                // 声明变量（提升作用域）
+                let driveData, rideData, walkData, spotData;
+
+                if (lastNameLink === "北海公园") {
+                    console.log("检测到北海公园，开始获取相关数据...");
+                    isBeihaiPark = true;
+                    [driveData, rideData, walkData, spotData] = await Promise.all([
+                        fetchData('/api/beihai_drivedistance', 'drive'),
+                        fetchData('/api/beihai_ridedistance', 'ride'),
+                        fetchData('/api/beihai_walkdistance', 'walk'),
+                        fetchData('/api/beihai_spot_message', 'spot')
+                    ]);
+                    // 立即更新交通方式显示
+                    updateTrafficTypeDisplay(true);
+                } else {
+                    console.log("默认地点，获取通用数据...");
+                    [driveData, rideData, walkData, spotData] = await Promise.all([
+                        fetchData('/api/drivedistance', 'drive'),
+                        fetchData('/api/ridedistance', 'ride'),
+                        fetchData('/api/walkdistance', 'walk'),
+                        fetchData('/api/bupt_spot_message', 'spot')
+                    ]);
+                    // 更新为普通地图的交通方式显示
+                    updateTrafficTypeDisplay(false);
+                }
+
+
+                // 处理地点数据
+                debugLog('加载地点数据...');
+                spotData.forEach(item => {
+                    const spot = {
+                        name: item.name,
+                        lng: parseFloat(item.lng),
+                        lat: parseFloat(item.lat),
+                        type: item.type,
+                        marker: null
+                    };
+
+                    roadNetwork.addSpot(spot);
+
+                    // 创建地图标记
+                    spot.marker = createMarker(spot);
+
+                    // 添加到侧边栏
+                    addSpotToSidebar(spot, roadNetwork.spots.length - 1);
+                });
+
+                // 处理路径数据
+                debugLog('加载驾车路径数据...');
+                driveData.forEach(item => {
+                    roadNetwork.addPathSegment(
+                        `${item.origin2},${item.origin1}`,
+                        `${item.destination2},${item.destination1}`,
+                        'drive',
+                        item.distance,
+                        item.congestion
+                    );
+                });
+
+                debugLog('加载骑行路径数据...');
+                rideData.forEach(item => {
+                    roadNetwork.addPathSegment(
+                        `${item.origin2},${item.origin1}`,
+                        `${item.destination2},${item.destination1}`,
+                        'ride',
+                        item.distance,
+                        item.congestion
+                    );
+                });
+
+                debugLog('加载步行路径数据...');
+                walkData.forEach(item => {
+                    roadNetwork.addPathSegment(
+                        `${item.origin2},${item.origin1}`,
+                        `${item.destination2},${item.destination1}`,
+                        'walk',
+                        item.distance,
+                        item.congestion
+                    );
+                });
+
+                debugLog('数据加载完成');
+                debugLog(`路网包含 ${roadNetwork.nodes.size} 个节点`);
+                debugLog(`已添加 ${roadNetwork.spots.length} 个地点`);
+            } catch (error) {
+                console.error('加载失败:', error);
+                alert('数据加载失败: ' + error.message);
+            }
+
+            // 点击页面其他地方隐藏自动完成建议
+            document.addEventListener('click', function(event) {
+                const fromInput = document.getElementById('fromLocation');
+                const toInput = document.getElementById('toLocation');
+                const waypointInput = document.getElementById('waypointLocation');
+                const fromSuggestions = document.getElementById('fromSuggestions');
+                const toSuggestions = document.getElementById('toSuggestions');
+                const waypointSuggestions = document.getElementById('waypointSuggestions');
+
+                if (!fromInput.contains(event.target)) {
+                    fromSuggestions.style.display = 'none';
+                }
+
+                if (!toInput.contains(event.target)) {
+                    toSuggestions.style.display = 'none';
+                }
+
+                if (!waypointInput.contains(event.target)) {
+                    waypointSuggestions.style.display = 'none';
+                }
+            });
+        });
+
+        // 创建标记点
+        function createMarker(spot) {
+            var point = new BMapGL.Point(spot.lng, spot.lat);
+            var marker = new BMapGL.Marker(point);
+            map.addOverlay(marker);
+
+            var infoWindow = new BMapGL.InfoWindow(
+                '名称：' + spot.name + '<br/>坐标：' + spot.lat.toFixed(6) + ', ' + spot.lng.toFixed(6) + 
+                '<br/>类型：' + spot.type, {
+                    width: 250,
+                    height: 100,
+                    title: spot.name
+                });
+
+            marker.addEventListener('click', function() {
+                map.openInfoWindow(infoWindow, point);
+            });
+
+            return marker;
+        }
+    </script>
+</body>
+</html>

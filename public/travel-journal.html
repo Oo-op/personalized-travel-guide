@@ -1,0 +1,1905 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>旅游日记 | 个性化旅游系统</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="journal.css">
+    <style>
+        /* 头部样式 */
+        .journal-header {
+            background: linear-gradient(135deg, #27aeb0, #2980b9);
+            color: white;
+            padding: 6rem 0 3rem;
+            text-align: center;
+            position: relative;
+        }
+        
+        .journal-header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .journal-header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        /* 返回按钮 */
+        .back-button {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            color: white;
+            text-decoration: none;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        .back-button i {
+            margin-right: 0.5rem;
+        }
+
+        /* 确保关闭按钮可点击 */
+        .close-modal {
+            cursor: pointer;
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            font-size: 1.5rem;
+            color: var(--gray-color);
+            transition: var(--transition);
+            z-index: 1001;
+        }
+        
+        .close-modal:hover {
+            color: var(--dark-color);
+        }
+
+        .like-button {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .like-button.liked i {
+            color: #e74c3c;
+        }
+        
+        .rating-section .stars i {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .rating-section .stars i.active {
+            color: #f39c12;
+        }
+
+        /* 评论样式 */
+        .comment {
+            padding: 1rem;
+            border-bottom: 1px solid #eee;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .comment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .comment-author {
+            font-weight: bold;
+            color: var(--dark-color);
+        }
+
+        .comment-date {
+            color: var(--gray-color);
+            font-size: 0.8rem;
+        }
+
+        .comment-content {
+            margin: 0.5rem 0;
+            line-height: 1.6;
+        }
+
+        .comment-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        .comment-action-btn {
+            background: none;
+            border: none;
+            color: var(--gray-color);
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            transition: all 0.3s ease;
+        }
+
+        .comment-action-btn:hover {
+            color: var(--primary-color);
+        }
+
+        .comment-action-btn.liked {
+            color: #e74c3c;
+        }
+
+        .comment-action-btn i {
+            font-size: 1rem;
+        }
+
+        .reply-form {
+            margin-top: 1rem;
+            padding-left: 2rem;
+            display: none;
+        }
+
+        .reply-form.active {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .reply-form input {
+            flex: 1;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .reply-form button {
+            padding: 0.5rem 1rem;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .replies {
+            margin-top: 1rem;
+            padding-left: 2rem;
+        }
+
+        .reply {
+            padding: 0.8rem;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+        }
+
+        .reply-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            margin-bottom: 0.3rem;
+        }
+
+        .reply-content {
+            font-size: 0.9rem;
+        }
+
+        .search-tips {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: none;
+            z-index: 1000;
+        }
+        
+        .search-box {
+            position: relative;
+        }
+        
+        .search-box:hover .search-tips {
+            display: block;
+        }
+        
+        .search-tips p {
+            margin: 0 0 5px 0;
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .search-tips ul {
+            margin: 0;
+            padding-left: 20px;
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .search-tips li {
+            margin: 3px 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- 头部区域 -->
+    <header class="journal-header">
+        <a href="PageOne.html" class="back-button">
+            <i class="fas fa-arrow-left"></i> 返回首页
+        </a>
+        <h1>旅游日记</h1>
+        <p>记录您的旅程，分享您的故事</p>
+    </header>
+    
+    <!-- 主要内容区 -->
+    <main class="journal-container">
+        <!-- 搜索和筛选区域 -->
+        <div class="journal-controls">
+            <div class="search-box">
+                <input type="text" id="journalSearch" placeholder="搜索目的地、标题、标签或内容...">
+                <button id="searchJournalBtn"><i class="fas fa-search"></i></button>
+            </div>
+            
+            <div class="filter-options">
+                <button class="filter-button active" data-filter="all">全部日记</button>
+                <button class="filter-button" data-filter="popular">最热日记</button>
+                <button class="filter-button" data-filter="top-rated">最高评分</button>
+                <button class="filter-button" data-filter="latest">最新发布</button>
+                <button class="filter-button" data-filter="my-journals">个人日记</button>
+                <button class="filter-button" data-filter="my-favorites">我的收藏</button>
+                <button class="filter-button" data-filter="interest">兴趣推荐</button>
+            </div>
+        </div>
+        
+        <!-- 日记列表 -->
+        <div class="journal-list" id="journalList">
+            <!-- 日记卡片将通过JavaScript动态加载 -->
+            <div class="empty-message">
+                <p>还没有旅游日记，快来发布第一篇吧！</p>
+                <button id="startWritingBtn">开始写作</button>
+            </div>
+        </div>
+        
+        <!-- 兴趣推荐区域 -->
+        <div class="interest-recommendations" id="interestRecommendations">
+            <!-- 兴趣推荐内容将通过JavaScript动态加载 -->
+        </div>
+        
+        <!-- 写日记按钮 -->
+        <button class="floating-button" id="writeJournalBtn">
+            <i class="fas fa-pen"></i>
+        </button>
+        
+        <!-- 日记编辑器模态框 -->
+        <div class="modal" id="journalEditorModal">
+            <div class="modal-content">
+                <span class="close-modal" id="closeEditorModal">&times;</span>
+                <h2><i class="fas fa-pen"></i> 写旅游日记</h2>
+                
+                <div class="form-group">
+                    <label for="journalTitle">标题</label>
+                    <input type="text" id="journalTitle" placeholder="为您的日记起个标题">
+                </div>
+                
+                <div class="form-group">
+                    <label for="journalDestination">目的地</label>
+                    <input type="text" id="journalDestination" placeholder="您去了哪里？">
+                </div>
+                
+                <div class="form-group">
+                    <label for="journalContent">内容</label>
+                    <textarea id="journalContent" rows="10" placeholder="写下您的旅游经历..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>上传照片</label>
+                    <div class="image-upload">
+                        <input type="file" id="journalImages" accept="image/*" multiple>
+                        <label for="journalImages" class="upload-button">
+                            <i class="fas fa-camera"></i> 选择照片
+                        </label>
+                        <div class="image-preview" id="imagePreview"></div>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button class="cancel-button" id="cancelJournalBtn">取消</button>
+                    <button class="save-button" id="saveJournalBtn">发布日记</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 日记详情模态框 -->
+        <div class="modal" id="journalDetailModal">
+            <div class="modal-content">
+                <span class="close-modal" id="closeDetailModal">&times;</span>
+                <div class="detail-header">
+                    <h2 id="detailTitle"></h2>
+                    <div class="detail-meta">
+                        <span id="detailAuthor"></span>
+                        <span id="detailDate"></span>
+                        <span id="detailDestination"></span>
+                    </div>
+                    <div id="detailTag"></div>
+                </div>
+                
+                <div class="detail-content">
+                    <div class="detail-images" id="detailImages"></div>
+                    <p id="detailContent"></p>
+                </div>
+                
+                <div class="detail-footer">
+                    <div class="detail-stats">
+                        <span id="detailViews"><i class="fas fa-eye"></i> <span id="viewsCount">0</span></span>
+                        <span id="detailLikes" class="like-button"><i class="far fa-heart"></i> <span id="likesCount">0</span></span>
+                    </div>
+                    
+                    <div class="rating-section">
+                        <h4>为这篇日记评分</h4>
+                        <div class="stars">
+                            <i class="far fa-star" data-rating="1"></i>
+                            <i class="far fa-star" data-rating="2"></i>
+                            <i class="far fa-star" data-rating="3"></i>
+                            <i class="far fa-star" data-rating="4"></i>
+                            <i class="far fa-star" data-rating="5"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="comment-section">
+                        <h4>评论</h4>
+                        <div class="comment-list" id="commentList">
+                            <p class="no-comments">暂无评论，快来发表第一条评论吧！</p>
+                        </div>
+                        <div class="comment-form">
+                            <input type="text" id="commentInput" placeholder="写下您的评论...">
+                            <button id="submitCommentBtn">发表</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <script>
+        // 全局变量
+        let currentUser = null;
+        let currentJournalId = null;
+        let currentFilteredJournals = []; // 添加全局变量存储当前筛选的日记列表
+        let currentFilter = 'all';
+        let currentSearchKeyword = '';
+        let tagClickCounts = {};
+        let commentLikeStates = {};
+
+        // 获取当前用户信息
+        async function getCurrentUser() {
+            try {
+                const response = await fetch('/api/check-auth');
+                const data = await response.json();
+                if (data.isLoggedIn) {
+                    currentUser = data.user;
+                }
+            } catch (error) {
+                console.error('获取用户信息失败:', error);
+            }
+        }
+
+        // 加载日记列表
+        async function loadJournals() {
+            try {
+                const response = await fetch('/api/journals');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const authResponse = await fetch('/api/check-auth');
+                    const authData = await authResponse.json();
+                    
+                    const journals = data.journals.map(journal => ({
+                        ...journal,
+                        is_author: authData.isLoggedIn && 
+                                  compareStrings(journal.id.toString(), authData.user.id.toString()) === 0
+                    }));
+                    
+                    // 使用当前的筛选状态进行排序
+                    const sortedJournals = await filterJournals(journals, currentFilter, authData);
+                    currentFilteredJournals = sortedJournals;
+                    renderJournalList(sortedJournals);
+                }
+            } catch (error) {
+                console.error('加载日记错误:', error);
+                showMessage('加载日记失败');
+            }
+        }
+        
+        // DOM加载完成后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            getCurrentUser(); // 获取当前用户信息
+            const closeDetailModal = document.getElementById('closeDetailModal');
+            if (closeDetailModal) {
+                closeDetailModal.addEventListener('click', async function() {
+                    document.getElementById('journalDetailModal').style.display = 'none';
+                    
+                    // 重新应用当前的筛选和排序
+                    try {
+                        const response = await fetch('/api/journals');
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            const authResponse = await fetch('/api/check-auth');
+                            const authData = await authResponse.json();
+                            
+                            let sortedJournals = data.journals.map(journal => ({
+                                ...journal,
+                                is_author: authData.isLoggedIn && journal.id === authData.user.id
+                            }));
+                            
+                            // 使用当前的筛选状态重新排序
+                            sortedJournals = await filterJournals(sortedJournals, currentFilter, authData);
+                            currentFilteredJournals = sortedJournals;
+                            renderJournalList(sortedJournals);
+                        }
+                    } catch (error) {
+                        console.error('重新加载日记错误:', error);
+                        showMessage('重新加载失败');
+                    }
+                    
+                    // 重新加载兴趣推荐
+                    await loadInterestRecommendations();
+                });
+            }
+
+            const closeEditorModal = document.getElementById('closeEditorModal');
+            if (closeEditorModal) {
+                closeEditorModal.addEventListener('click', function() {
+                     document.getElementById('journalEditorModal').style.display = 'none';
+                });
+            }
+
+            const cancelJournalBtn = document.getElementById('cancelJournalBtn');
+            if (cancelJournalBtn) {
+                cancelJournalBtn.addEventListener('click', function() {
+                    document.getElementById('journalTitle').value = '';
+                    document.getElementById('journalContent').value = '';
+                    document.getElementById('journalDestination').value = '';
+                    document.getElementById('imagePreview').innerHTML = '';
+                    document.getElementById('journalEditorModal').style.display = 'none';
+                });
+            }
+            
+            // 绑定搜索按钮事件
+            document.getElementById('searchJournalBtn').addEventListener('click', function() {
+                const keyword = document.getElementById('journalSearch').value.trim();
+                currentSearchKeyword = keyword;
+                searchJournals(keyword);
+            });
+            
+            // 绑定筛选按钮事件
+            document.querySelectorAll('.filter-button').forEach(button => {
+                button.addEventListener('click', async function() {
+                    document.querySelectorAll('.filter-button').forEach(btn => btn.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    currentFilter = this.dataset.filter; // 更新当前筛选状态
+                    try {
+                        const response = await fetch('/api/journals');
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            const authResponse = await fetch('/api/check-auth');
+                            const authData = await authResponse.json();
+                            
+                            if (!authData.isLoggedIn && (currentFilter === 'my-journals' || currentFilter === 'my-favorites' || currentFilter === 'interest')) {
+                                showMessage('请先登录');
+                                return;
+                            }
+                            
+                            let sortedJournals = data.journals.map(journal => ({
+                                ...journal,
+                                is_author: authData.isLoggedIn && journal.id === authData.user.id
+                            }));
+                    
+                            // 根据筛选条件排序
+                            sortedJournals = await filterJournals(sortedJournals, currentFilter, authData);
+                            
+                            // 如果存在搜索关键词，应用搜索过滤
+                            if (currentSearchKeyword) {
+                                if (currentSearchKeyword.startsWith('目的地:')) {
+                                    const destination = currentSearchKeyword.substring(4).trim();
+                                    sortedJournals = searchByDestination(sortedJournals, destination);
+                                } else if (currentSearchKeyword.startsWith('标题:')) {
+                                    const title = currentSearchKeyword.substring(3).trim();
+                                    sortedJournals = searchByTitle(sortedJournals, title);
+                                } else {
+                                    sortedJournals = fullTextSearch(sortedJournals, currentSearchKeyword);
+                                }
+                            }
+                            
+                            currentFilteredJournals = sortedJournals; // 更新当前筛选的日记列表
+                            renderJournalList(sortedJournals);
+                        }
+                    } catch (error) {
+                        console.error('筛选日记错误:', error);
+                        showMessage('筛选失败');
+                    }
+                });
+            });
+            
+            // 绑定写日记按钮事件
+            document.getElementById('writeJournalBtn').addEventListener('click', function() {
+                document.getElementById('journalEditorModal').style.display = 'block';
+            });
+            
+            // 绑定开始写作按钮事件
+            document.getElementById('startWritingBtn').addEventListener('click', function() {
+                document.getElementById('journalEditorModal').style.display = 'block';
+            });
+
+            // 绑定保存日记按钮事件
+            document.getElementById('saveJournalBtn').addEventListener('click', async function() {
+                const title = document.getElementById('journalTitle').value;
+                const content = document.getElementById('journalContent').value;
+                const destination = document.getElementById('journalDestination').value;
+                const tag = document.querySelector('.journal-tags .tag.selected')?.textContent.trim();
+                
+                if (!title || !content) {
+                    showMessage('请填写标题和内容！');
+                    return;
+                }
+                
+                // 获取当前登录用户ID
+                const response = await fetch('/api/check-auth');
+                const authData = await response.json();
+                
+                if (!authData.isLoggedIn) {
+                    showMessage('请先登录！');
+                    return;
+                }
+                
+                const journalData = {
+                    title,
+                    content,
+                    destination,
+                    tag,
+                    id: authData.user.id
+                };
+                
+                await publishJournal(journalData);
+            });
+                    
+            // 页面加载时获取日记列表
+            loadJournals();
+
+            // 绑定评论提交按钮事件
+            const submitCommentBtn = document.getElementById('submitCommentBtn');
+            if (submitCommentBtn) {
+                submitCommentBtn.addEventListener('click', submitComment);
+            }
+
+            // 绑定评论输入框回车事件
+            const commentInput = document.getElementById('commentInput');
+            if (commentInput) {
+                commentInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        submitComment();
+                    }
+                });
+            }
+
+            // 绑定评论点赞和回复按钮事件
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('.like-comment')) {
+                    const button = e.target.closest('.like-comment');
+                    const commentId = button.dataset.id;
+                    likeComment(commentId);
+                } else if (e.target.closest('.reply-comment')) {
+                    const button = e.target.closest('.reply-comment');
+                    const commentId = button.dataset.id;
+                    const replyForm = document.getElementById(`replyForm-${commentId}`);
+                    if (replyForm) {
+                        replyForm.classList.toggle('active');
+                    }
+                } else if (e.target.closest('.submit-reply')) {
+                    const button = e.target.closest('.submit-reply');
+                    const replyForm = button.closest('.reply-form');
+                    const commentId = replyForm.id.split('-')[1];
+                    const content = replyForm.querySelector('input').value.trim();
+                    
+                    if (!content) {
+                        showMessage('请输入回复内容');
+                        return;
+                    }
+                    
+                    submitReply(commentId, content);
+                }
+            });
+
+            // 修改搜索框回车事件
+            document.getElementById('journalSearch').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    const keyword = this.value.trim();
+                    currentSearchKeyword = keyword;
+                    searchJournals(keyword);
+                }
+            });
+
+            // 修改搜索框清空事件
+            document.getElementById('journalSearch').addEventListener('input', function() {
+                if (!this.value.trim()) {
+                    currentSearchKeyword = '';
+                    searchJournals(''); // 清空搜索时显示所有日记
+                }
+            });
+
+            // 从本地存储加载标签点击统计
+            const storedCounts = localStorage.getItem('tagClickCounts');
+            if (storedCounts) {
+                tagClickCounts = JSON.parse(storedCounts);
+            }
+
+            // 从本地存储加载评论点赞状态
+            const storedLikeStates = localStorage.getItem('commentLikeStates');
+            if (storedLikeStates) {
+                commentLikeStates = JSON.parse(storedLikeStates);
+            }
+        });
+                    
+        // 发布日记
+        async function publishJournal(journalData) {
+            try {
+                const response = await fetch('/api/journals', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(journalData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage('日记发布成功！');
+                    // 重新加载日记列表
+                    loadJournals();
+                    // 关闭编辑器模态框
+                    document.getElementById('journalEditorModal').style.display = 'none';
+                } else {
+                    showMessage(data.message || '发布失败');
+                }
+            } catch (error) {
+                console.error('发布日记错误:', error);
+                showMessage('发布失败');
+            }
+        }
+        
+        /**
+         * 渲染日记列表
+         * @param {Array} journalsToRender - 要渲染的日记数组
+         */
+        function renderJournalList(journalsToRender) {
+            const journalList = document.getElementById('journalList');
+            
+            if (!journalsToRender || journalsToRender.length === 0) {
+                journalList.innerHTML = `
+                    <div class="empty-message">
+                        <p>还没有旅游日记，快来发布第一篇吧！</p>
+                        <button id="startWritingBtn">开始写作</button>
+                    </div>
+                `;
+                return;
+            }
+            
+            let journalsHTML = '';
+            for (const journal of journalsToRender) {
+                // 获取第一张图片或视频作为封面
+                let coverImage = '/public/uploads/default.jpg';
+                if (journal.images && journal.images.length > 0) {
+                    const firstMedia = journal.images[0];
+                    if (firstMedia.file_type === 'video') {
+                        // 如果是视频，使用视频的第一帧作为封面
+                        const video = document.createElement('video');
+                        video.src = firstMedia.image_url;
+                        video.style.display = 'none';
+                        video.preload = 'metadata';
+                        document.body.appendChild(video);
+
+                        // 使用 Promise 来处理视频加载
+                        const getVideoThumbnail = () => {
+                            return new Promise((resolve) => {
+                                video.onloadeddata = () => {
+                                    video.currentTime = 0;
+                                };
+
+                                video.onseeked = () => {
+                                    const canvas = document.createElement('canvas');
+                                    canvas.width = video.videoWidth;
+                                    canvas.height = video.videoHeight;
+                                    const ctx = canvas.getContext('2d');
+                                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                                    const thumbnail = canvas.toDataURL('image/jpeg');
+                                    video.remove();
+                                    resolve(thumbnail);
+                                };
+                            });
+                        };
+
+                        // 立即使用视频URL作为临时封面
+                        coverImage = firstMedia.image_url;
+                        
+                        // 异步获取视频缩略图
+                        getVideoThumbnail().then(thumbnail => {
+                            const card = document.querySelector(`[data-id="${journal.journal_id}"] .journal-card-image`);
+                            if (card) {
+                                card.style.backgroundImage = `url('${thumbnail}')`;
+                            }
+                        });
+                    } else {
+                        coverImage = firstMedia.image_url;
+                    }
+                }
+                
+                // 截取内容预览，确保不会显示乱码
+                const contentPreview = journal.content ? 
+                    (journal.content.length > 100 ? journal.content.substring(0, 100) + '...' : journal.content) : 
+                    '暂无内容';
+                
+                journalsHTML += `
+                    <div class="journal-card" data-id="${journal.journal_id}">
+                        <div class="journal-card-image" style="background-image: url('${coverImage}')">
+                            <div class="journal-card-overlay">
+                                <span class="journal-destination">${journal.destination || '未指定目的地'}</span>
+                                ${journal.images && journal.images[0]?.file_type === 'video' ? 
+                                    '<i class="fas fa-video" style="position: absolute; top: 5px; right: 5px; color: white; background: rgba(0,0,0,0.5); padding: 2px; border-radius: 3px;"></i>' : 
+                                    ''}
+                            </div>
+                        </div>
+                        <div class="journal-card-content">
+                            <h3 class="journal-title">${journal.title}</h3>
+                            <div class="journal-meta">
+                                <span><i class="fas fa-user"></i> ${journal.author}</span>
+                                <span><i class="fas fa-calendar-alt"></i> ${new Date(journal.created_at).toLocaleDateString()}</span>
+                            </div>
+                            ${journal.tag ? `
+                                <div class="journal-tag" onclick="handleTagClick('${journal.tag}')">
+                                    <i class="fas fa-tag"></i> ${journal.tag}
+                                </div>
+                            ` : ''}
+                            <p class="journal-excerpt">${contentPreview}</p>
+                            <div class="journal-stats">
+                                <span><i class="fas fa-eye"></i> ${journal.views || 0}</span>
+                                <span><i class="fas fa-heart"></i> ${journal.likes_count || 0}</span>
+                                <span class="journal-rating">
+                                    ${renderStars(parseFloat(journal.avg_rating) || 0)} ${(parseFloat(journal.avg_rating) || 0).toFixed(1)}
+                                </span>
+                            </div>
+                            <div class="journal-actions">
+                                <button class="view-button" data-id="${journal.journal_id}">查看详情</button>
+                                ${journal.is_author ? `<button class="delete-button" data-id="${journal.journal_id}"><i class="fas fa-trash"></i> 删除</button>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+                
+            journalList.innerHTML = journalsHTML;
+            
+            // 重新绑定按钮事件
+            document.querySelectorAll('.view-button').forEach(button => {
+                button.addEventListener('click', function() {
+                    const journalId = this.dataset.id;
+                    showJournalDetail(journalId);
+                });
+            });
+
+            // 绑定删除按钮事件
+            document.querySelectorAll('.delete-button').forEach(button => {
+                button.addEventListener('click', async function() {
+                    const journalId = this.dataset.id;
+                    if (confirm('确定要删除这篇日记吗？此操作不可恢复。')) {
+                        try {
+                            const response = await fetch(`/api/journals/${journalId}`, {
+                                method: 'DELETE'
+                            });
+                            const data = await response.json();
+                            
+                            if (data.success) {
+                                showMessage('日记删除成功');
+                                loadJournals(); // 重新加载日记列表
+                            } else {
+                                showMessage(data.message || '删除失败');
+                            }
+                        } catch (error) {
+                            console.error('删除日记错误:', error);
+                            showMessage('删除失败');
+                        }
+                    }
+                });
+            });
+        }
+        
+        // 显示日记详情
+        async function showJournalDetail(journalId) {
+            currentJournalId = journalId;
+            try {
+                console.log('开始获取日记详情，ID:', journalId);
+                const response = await fetch(`/api/journals/${journalId}`);
+                const data = await response.json();
+                console.log('获取到的日记详情:', data);
+                
+                if (!data.success) {
+                    throw new Error(data.message || '获取日记详情失败');
+                }
+                
+                const journal = data.journal;
+                if (!journal) {
+                    throw new Error('日记数据为空');
+                }
+
+                // 获取当前用户信息
+                const authResponse = await fetch('/api/check-auth');
+                const authData = await authResponse.json();
+                
+                // 如果用户已登录且日记有标签，更新标签点击次数
+                if (authData.isLoggedIn && journal.tag) {
+                    try {
+                        console.log('更新标签点击次数:', {
+                            userId: authData.user.id,
+                            tag: journal.tag
+                        });
+                        
+                        const interestResponse = await fetch('/api/update-interest', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                id: authData.user.id,
+                                tag: journal.tag
+                            })
+                        });
+                        
+                        const interestData = await interestResponse.json();
+                        if (!interestData.success) {
+                            console.error('更新标签点击次数失败:', interestData.message);
+                        } else {
+                            console.log('标签点击次数更新成功');
+                            // 重新加载兴趣推荐
+                            await loadInterestRecommendations();
+                        }
+                    } catch (error) {
+                        console.error('更新标签点击次数错误:', error);
+                    }
+                }
+
+                if (authData.isLoggedIn) {
+                    // 获取用户点赞状态
+                    const likeResponse = await fetch(`/api/journals/${journalId}/check-like`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            id: authData.user.id
+                        })
+                    });
+                    const likeData = await likeResponse.json();
+                    
+                    // 获取用户评分状态
+                    const ratingResponse = await fetch(`/api/journals/${journalId}/check-rating`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            id: authData.user.id
+                        })
+                    });
+                    const ratingData = await ratingResponse.json();
+                    
+                    // 更新点赞按钮状态
+                    const likeButton = document.getElementById('detailLikes');
+                    if (likeButton) {
+                        likeButton.className = `like-button ${likeData.liked ? 'liked' : ''}`;
+                        likeButton.innerHTML = `<i class="${likeData.liked ? 'fas' : 'far'} fa-heart"></i> <span id="likesCount">${journal.likes_count || 0}</span>`;
+                    }
+                    
+                    // 更新评分星星状态
+                    const stars = document.querySelectorAll('.rating-section .stars i');
+                    if (stars && ratingData.rating) {
+                        stars.forEach((star, index) => {
+                            star.className = `fa-star ${index < ratingData.rating ? 'fas active' : 'far'}`;
+                        });
+                    }
+                }
+
+                // 更新页面内容
+                document.getElementById('detailTitle').textContent = journal.title;
+                document.getElementById('detailContent').textContent = journal.content || '';
+                document.getElementById('detailDestination').textContent = `目的地: ${journal.destination || '未指定'}`;
+                document.getElementById('detailAuthor').textContent = `作者: ${journal.author}`;
+                document.getElementById('detailDate').textContent = `发布日期: ${new Date(journal.created_at).toLocaleString()}`;
+                document.getElementById('viewsCount').textContent = journal.views || 0;
+                document.getElementById('likesCount').textContent = journal.likes_count || 0;
+                
+                // 更新标签
+                const detailTag = document.getElementById('detailTag');
+                if (detailTag) {
+                    if (journal.tag) {
+                        detailTag.innerHTML = `<div class="journal-tag"><i class="fas fa-tag"></i> ${journal.tag}</div>`;
+                    } else {
+                        detailTag.innerHTML = '';
+                    }
+                }
+                
+                // 更新媒体文件
+                const detailImages = document.getElementById('detailImages');
+                if (detailImages) {
+                    detailImages.innerHTML = '';
+                    if (journal.images && journal.images.length > 0) {
+                        journal.images.forEach(media => {
+                            if (media.file_type === 'video') {
+                                const video = document.createElement('video');
+                                video.src = media.image_url;
+                                video.controls = true;
+                                video.style.maxWidth = '100%';
+                                video.style.marginBottom = '1rem';
+                                detailImages.appendChild(video);
+                            } else {
+                                const img = document.createElement('img');
+                                img.src = media.image_url;
+                                img.alt = '日记图片';
+                                img.style.maxWidth = '100%';
+                                img.style.marginBottom = '1rem';
+                                detailImages.appendChild(img);
+                            }
+                        });
+                    }
+                }
+                
+                // 更新评论列表
+                const commentList = document.getElementById('commentList');
+                if (commentList) {
+                    if (journal.comments && journal.comments.length > 0) {
+                        let commentsHTML = '';
+                        journal.comments.forEach(comment => {
+                            // 检查评论的点赞状态
+                            const isLiked = commentLikeStates[comment.comment_id] !== undefined ? 
+                                commentLikeStates[comment.comment_id] : 
+                                comment.is_liked;
+                            
+                            commentsHTML += `
+                                <div class="comment" data-id="${comment.comment_id}">
+                                    <div class="comment-header">
+                                        <span class="comment-author">${comment.author}</span>
+                                        <span class="comment-date">${new Date(comment.created_at).toLocaleString()}</span>
+                                    </div>
+                                    <div class="comment-content">${comment.content}</div>
+                                    <div class="comment-actions">
+                                        <button class="comment-action-btn like-comment ${isLiked ? 'liked' : ''}" data-id="${comment.comment_id}">
+                                            <i class="${isLiked ? 'fas' : 'far'} fa-heart"></i>
+                                            <span class="likes-count">${comment.likes_count || 0}</span>
+                                        </button>
+                                        <button class="comment-action-btn reply-comment" data-id="${comment.comment_id}">
+                                            <i class="fas fa-reply"></i> 回复
+                                        </button>
+                                    </div>
+                                    <div class="reply-form" id="replyForm-${comment.comment_id}">
+                                        <input type="text" placeholder="写下您的回复...">
+                                        <button class="submit-reply">发送</button>
+                                    </div>
+                                    ${comment.replies && comment.replies.length > 0 ? `
+                                        <div class="replies">
+                                            ${comment.replies.map(reply => `
+                                                <div class="reply">
+                                                    <div class="reply-header">
+                                                        <span class="reply-author">${reply.author}</span>
+                                                        <span class="reply-date">${new Date(reply.created_at).toLocaleString()}</span>
+                                                    </div>
+                                                    <div class="reply-content">${reply.content}</div>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            `;
+                        });
+                        commentList.innerHTML = commentsHTML;
+                    } else {
+                        commentList.innerHTML = '<p class="no-comments">暂无评论，快来发表第一条评论吧！</p>';
+                    }
+                }
+                
+                // 显示模态框
+                const modal = document.getElementById('journalDetailModal');
+                if (modal) {
+                    modal.style.display = 'block';
+                }
+                
+                // 绑定点赞事件
+                const likeButton = document.getElementById('detailLikes');
+                if (likeButton && authData.isLoggedIn) {
+                    likeButton.onclick = async function() {
+                        try {
+                            const response = await fetch(`/api/journals/${journalId}/like`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    id: authData.user.id
+                                })
+                            });
+                            const data = await response.json();
+                            if (data.success) {
+                                // 重新获取日记详情以获取最新的点赞数
+                                const detailResponse = await fetch(`/api/journals/${journalId}`);
+                                const detailData = await detailResponse.json();
+                                if (detailData.success) {
+                                    // 更新点赞按钮状态和数量
+                                    this.className = `like-button ${data.liked ? 'liked' : ''}`;
+                                    this.innerHTML = `<i class="${data.liked ? 'fas' : 'far'} fa-heart"></i> <span id="likesCount">${detailData.journal.likes_count || 0}</span>`;
+                                }
+                            }
+                        } catch (error) {
+                            console.error('点赞操作失败:', error);
+                        }
+                    };
+                }
+                
+                // 绑定评分事件
+                const stars = document.querySelectorAll('.rating-section .stars i');
+                if (stars && authData.isLoggedIn) {
+                    stars.forEach((star, index) => {
+                        star.onclick = async function() {
+                            try {
+                                const response = await fetch(`/api/journals/${journalId}/rate`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify({
+                                        id: authData.user.id,
+                                        rating_value: index + 1
+                                    })
+                                });
+                                const data = await response.json();
+                                if (data.success) {
+                                    // 更新星星状态
+                                    stars.forEach((s, i) => {
+                                        s.className = `fa-star ${i <= index ? 'fas active' : 'far'}`;
+                                    });
+                                }
+                            } catch (error) {
+                                console.error('评分操作失败:', error);
+                            }
+                        };
+                    });
+                }
+                
+                console.log('日记详情更新完成');
+            } catch (error) {
+                console.error('获取日记详情失败:', error);
+                showMessage(error.message || '获取日记详情失败');
+            }
+        }
+        
+        /**
+         * 根据评分渲染星星
+         * @param {number} rating - 评分值 (0-5)
+         * @returns {string} 星星HTML
+         */
+        function renderStars(rating) {
+            let stars = '';
+            const fullStars = Math.floor(rating);
+            const hasHalfStar = rating % 1 >= 0.5;
+            
+            // 满星
+            for(let i = 0; i < fullStars; i++) {
+                stars += '★';
+            }
+            
+            // 半星
+            if(hasHalfStar) {
+                stars += '☆';
+            }
+            
+            // 空星
+            const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
+            for(let i = 0; i < emptyStars; i++) {
+                stars += '☆';
+            }
+            
+            return stars;
+        }
+
+        // 图片上传处理
+        async function uploadImages(journalId, files) {
+            const formData = new FormData();
+            for (let file of files) {
+                formData.append('images', file);
+            }
+            
+            try {
+                const response = await fetch(`/api/journals/${journalId}/images`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    return data.images;
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (error) {
+                console.error('上传图片错误:', error);
+                showMessage('上传图片失败');
+                return [];
+            }
+        }
+
+        // 添加消息提示函数
+        function showMessage(message) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+            messageDiv.textContent = message;
+            document.body.appendChild(messageDiv);
+            
+            setTimeout(() => {
+                messageDiv.remove();
+            }, 3000);
+        }
+
+        // 提交评论
+        async function submitComment() {
+            // 1. 获取评论内容
+            const commentInput = document.getElementById('commentInput');
+            const content = commentInput.value.trim();
+            
+            // 2. 验证评论内容
+            if (!content) {
+                showMessage('请输入评论内容');
+                return;
+            }
+            
+            // 3. 验证用户登录状态
+            if (!currentUser) {
+                showMessage('请先登录');
+                return;
+            }
+            
+            try {
+                // 4. 发送评论请求
+                const response = await fetch(`/api/journals/${currentJournalId}/comments`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        content,
+                        id: currentUser.id
+                    })
+                });
+                
+                const data = await response.json();
+                
+                // 5. 处理响应
+                if (data.success) {
+                    showMessage('评论发布成功！');
+                    // 重新加载评论列表
+                    showJournalDetail(currentJournalId);
+                    // 清空输入框
+                    commentInput.value = '';
+                } else {
+                    showMessage(data.message || '评论发布失败');
+                }
+            } catch (error) {
+                console.error('提交评论错误:', error);
+                showMessage('评论发布失败');
+            }
+        }
+
+        // 点赞评论
+        async function likeComment(commentId) {
+            if (!currentUser) {
+                showMessage('请先登录');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/comments/${commentId}/like`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        id: currentUser.id
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // 更新点赞按钮状态
+                    const likeBtn = document.querySelector(`.like-comment[data-id="${commentId}"]`);
+                    if (likeBtn) {
+                        const likeIcon = likeBtn.querySelector('i');
+                        const likeCount = likeBtn.querySelector('.likes-count');
+                        
+                        if (data.liked) {
+                            likeIcon.className = 'fas fa-heart';
+                            likeBtn.classList.add('liked');
+                            // 保存点赞状态
+                            commentLikeStates[commentId] = true;
+                        } else {
+                            likeIcon.className = 'far fa-heart';
+                            likeBtn.classList.remove('liked');
+                            // 保存点赞状态
+                            commentLikeStates[commentId] = false;
+                        }
+                        
+                        if (likeCount) {
+                            likeCount.textContent = parseInt(likeCount.textContent) + (data.liked ? 1 : -1);
+                        }
+                    }
+                    showMessage(data.liked ? '点赞成功' : '取消点赞');
+                } else {
+                    showMessage(data.message || '操作失败');
+                }
+            } catch (error) {
+                console.error('点赞评论错误:', error);
+                showMessage('操作失败');
+            }
+        }
+
+        // 提交回复
+        async function submitReply(commentId, content) {
+            if (!currentUser) {
+                showMessage('请先登录');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/comments/${commentId}/replies`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        content,
+                        id: currentUser.id
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage('回复发布成功！');
+                    // 重新加载评论列表
+                    showJournalDetail(currentJournalId);
+                    // 清空回复输入框
+                    const replyForm = document.getElementById(`replyForm-${commentId}`);
+                    if (replyForm) {
+                        replyForm.querySelector('input').value = '';
+                        replyForm.classList.remove('active');
+                    }
+                } else {
+                    showMessage(data.message || '回复发布失败');
+                }
+            } catch (error) {
+                console.error('提交回复错误:', error);
+                showMessage('回复发布失败');
+            }
+        }
+
+        // 基础数据结构和算法实现
+        // 优化的字符串比较算法
+        function compareStrings(str1, str2) {
+            if (str1 === str2) return 0;
+            if (!str1) return -1;
+            if (!str2) return 1;
+            
+            const len1 = str1.length;
+            const len2 = str2.length;
+            const minLen = Math.min(len1, len2);
+            
+            // 使用KMP算法的思想进行优化比较
+            let i = 0;
+            while (i < minLen) {
+                const char1 = str1.charCodeAt(i);
+                const char2 = str2.charCodeAt(i);
+                
+                if (char1 !== char2) {
+                    return char1 - char2;
+                }
+                
+                // 如果当前字符相同，检查后续字符是否也相同
+                let j = i + 1;
+                while (j < minLen && str1.charCodeAt(j) === str2.charCodeAt(j)) {
+                    j++;
+                }
+                
+                if (j < minLen) {
+                    return str1.charCodeAt(j) - str2.charCodeAt(j);
+                }
+                
+                i = j;
+            }
+            
+            return len1 - len2;
+        }
+
+        // 快速排序算法
+        function quickSort(arr, compareFn) {
+            if (arr.length <= 1) return arr;
+            
+            const pivot = arr[Math.floor(arr.length / 2)];
+            const left = [];
+            const right = [];
+            const equal = [];
+            
+            for (let item of arr) {
+                const cmp = compareFn(item, pivot);
+                if (cmp < 0) left.push(item);
+                else if (cmp > 0) right.push(item);
+                else equal.push(item);
+            }
+            
+            return [...quickSort(left, compareFn), ...equal, ...quickSort(right, compareFn)];
+        }
+
+        // 二分查找算法
+        function binarySearch(arr, target, compareFn) {
+            let left = 0;
+            let right = arr.length - 1;
+            
+            while (left <= right) {
+                const mid = Math.floor((left + right) / 2);
+                const cmp = compareFn(arr[mid], target);
+                
+                if (cmp === 0) return mid;
+                if (cmp < 0) left = mid + 1;
+                else right = mid - 1;
+            }
+            
+            return -1;
+        }
+
+        // 字符串包含算法
+        function stringContains(str, searchStr) {
+            if (!str || !searchStr) return false;
+            return str.toLowerCase().includes(searchStr.toLowerCase());
+        }
+
+        // 搜索日记
+        function searchJournals(keyword) {
+            if (!keyword) {
+                // 如果关键词为空，显示所有日记
+                document.querySelectorAll('.journal-card').forEach(journal => {
+                    journal.style.display = 'block';
+                });
+                return;
+            }
+
+            // 获取所有日记
+            const journals = document.querySelectorAll('.journal-card');
+            let hasResults = false;
+            
+            // 遍历并过滤日记
+            journals.forEach(journal => {
+                const title = journal.querySelector('.journal-title').textContent;
+                const content = journal.querySelector('.journal-excerpt').textContent;
+                const destination = journal.querySelector('.journal-destination').textContent;
+                const tag = journal.querySelector('.journal-tag')?.textContent || '';
+                
+                // 使用字符串包含算法检查是否匹配关键词
+                const isMatch = stringContains(title, keyword) || 
+                               stringContains(content, keyword) || 
+                               stringContains(destination, keyword) ||
+                               stringContains(tag, keyword);
+                
+                // 显示或隐藏日记卡片
+                journal.style.display = isMatch ? 'block' : 'none';
+                if (isMatch) hasResults = true;
+            });
+
+            // 如果没有搜索结果，显示提示信息
+            if (!hasResults) {
+                showMessage('未找到相关日记');
+            }
+        }
+
+        // 按目的地搜索和排序
+        function searchByDestination(journals, destination) {
+            // 1. 使用字符串包含算法查找相关日记
+            const matchedJournals = journals.filter(journal => 
+                stringContains(journal.destination.toLowerCase(), destination.toLowerCase())
+            );
+            
+            // 2. 使用快速排序按热度排序
+            return quickSort(matchedJournals, (a, b) => {
+                const scoreA = (a.views || 0) * 0.7 + (a.avg_rating || 0) * 0.3;
+                const scoreB = (b.views || 0) * 0.7 + (b.avg_rating || 0) * 0.3;
+                return scoreB - scoreA;
+            });
+        }
+
+        // 精确查询日记标题
+        function searchByTitle(journals, title) {
+            // 使用字符串比较算法进行精确匹配
+            return journals.filter(journal => 
+                compareStrings(journal.title.toLowerCase(), title.toLowerCase()) === 0
+            );
+        }
+
+        // 全文检索
+        function fullTextSearch(journals, keyword) {
+            // 1. 将关键词转换为小写
+            keyword = keyword.toLowerCase();
+            
+            // 2. 使用字符串包含算法进行全文检索
+            return journals.filter(journal => 
+                stringContains(journal.title.toLowerCase(), keyword) ||
+                stringContains(journal.content.toLowerCase(), keyword) ||
+                stringContains(journal.destination.toLowerCase(), keyword) ||
+                (journal.tag && stringContains(journal.tag.toLowerCase(), keyword))
+            );
+        }
+
+        // 筛选日记
+        async function filterJournals(journals, filter, authData) {
+            let filteredJournals = [...journals];
+            
+            switch(filter) {
+                case 'popular':
+                    // 只使用浏览量排序
+                    filteredJournals = quickSort(filteredJournals, (a, b) => {
+                        return (b.views || 0) - (a.views || 0);
+                    });
+                    break;
+                    
+                case 'top-rated':
+                    // 使用快速排序按评分排序
+                    filteredJournals = quickSort(filteredJournals, (a, b) => {
+                        const ratingA = a.avg_rating || 0;
+                        const ratingB = b.avg_rating || 0;
+                        return ratingB - ratingA;
+                    });
+                    break;
+                    
+                case 'latest':
+                    // 使用快速排序按创建时间排序
+                    filteredJournals = quickSort(filteredJournals, (a, b) => {
+                        const dateA = new Date(a.created_at).getTime();
+                        const dateB = new Date(b.created_at).getTime();
+                        return dateB - dateA;
+                    });
+                    break;
+                    
+                case 'my-journals':
+                    // 比较筛选当前用户的日记
+                    if (authData.isLoggedIn) {
+                        filteredJournals = filteredJournals.filter(journal => 
+                            compareStrings(journal.id.toString(), authData.user.id.toString()) === 0
+                        );
+                    }
+                    break;
+                    
+                case 'my-favorites':
+                    // 使用比较筛选用户收藏的日记
+                    if (authData.isLoggedIn) {
+                        try {
+                            // 获取用户收藏的日记
+                            const favoritesResponse = await fetch(`/api/journals/favorites/${authData.user.id}`);
+                            const favoritesData = await favoritesResponse.json();
+                            
+                            if (favoritesData.success) {
+                                const favoriteIds = new Set(favoritesData.favorites.map(f => f.journal_id));
+                                filteredJournals = filteredJournals.filter(journal => 
+                                    favoriteIds.has(journal.journal_id)
+                                );
+                                
+                                // 如果没有收藏的日记，显示提示信息
+                                if (filteredJournals.length === 0) {
+                                    const journalList = document.getElementById('journalList');
+                                    journalList.innerHTML = `
+                                        <div class="empty-message">
+                                            <p>您还没有收藏任何日记</p>
+                                            <p>浏览日记时点击心形图标即可收藏！</p>
+                                        </div>
+                                    `;
+                                    return filteredJournals;
+                                }
+                            } else {
+                                throw new Error(favoritesData.message || '获取收藏失败');
+                            }
+                        } catch (error) {
+                            console.error('获取收藏日记错误:', error);
+                            showMessage('获取收藏失败');
+                            return [];
+                        }
+                    }
+                    break;
+                    
+                case 'interest':
+                    // 比较根据用户兴趣标签筛选
+                    if (authData.isLoggedIn) {
+                        try {
+                            // 获取用户的兴趣标签
+                            const interestResponse = await fetch(`/api/interest/${authData.user.id}`);
+                            const interestData = await interestResponse.json();
+                            
+                            if (interestData.success && interestData.interests) {
+                                // 根据兴趣标签筛选日记
+                                filteredJournals = filteredJournals.filter(journal => 
+                                    compareStrings(journal.tag, interestData.interests.tag) === 0
+                                );
+                                
+                                // 如果没有找到相关日记，显示提示信息
+                                if (filteredJournals.length === 0) {
+                                    const journalList = document.getElementById('journalList');
+                                    journalList.innerHTML = `
+                                        <div class="empty-message">
+                                            <p>还没有找到与您兴趣标签"${interestData.interests.tag}"相关的日记</p>
+                                            <p>您可以继续浏览其他标签，或者发布一篇相关日记！</p>
+                                        </div>
+                                    `;
+                                    return filteredJournals;
+                                }
+                            } else {
+                                // 如果用户还没有兴趣标签，显示提示信息
+                                const journalList = document.getElementById('journalList');
+                                journalList.innerHTML = `
+                                    <div class="empty-message">
+                                        <p>您还没有兴趣标签记录</p>
+                                        <p>请先浏览一些标签，系统会自动记录您的兴趣！</p>
+                                    </div>
+                                `;
+                                return filteredJournals;
+                            }
+                        } catch (error) {
+                            console.error('获取兴趣标签错误:', error);
+                            showMessage('获取兴趣标签失败');
+                            return [];
+                        }
+                    }
+                    break;
+            }
+            
+            return filteredJournals;
+        }
+
+        // 添加标签点击处理函数
+        async function handleTagClick(tag) {
+            try {
+                // 获取当前用户信息
+                const authResponse = await fetch('/api/check-auth');
+                const authData = await authResponse.json();
+                
+                if (!authData.isLoggedIn) {
+                    showMessage('请先登录');
+                    return;
+                }
+
+                console.log('处理标签点击:', {
+                    userId: authData.user.id,
+                    tag: tag
+                });
+
+                // 更新数据库中的标签点击次数
+                const response = await fetch('/api/update-interest', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        id: authData.user.id,
+                        tag: tag
+                    })
+                });
+
+                const data = await response.json();
+                if (!data.success) {
+                    throw new Error(data.message || '更新兴趣标签失败');
+                }
+
+                console.log('标签点击次数更新成功');
+
+                // 显示该标签下的所有日记
+                showTagJournals(tag);
+
+                // 重新加载兴趣推荐
+                await loadInterestRecommendations();
+            } catch (error) {
+                console.error('处理标签点击错误:', error);
+                showMessage('更新兴趣标签失败');
+            }
+        }
+
+        // 添加显示标签日记的函数
+        async function showTagJournals(tag) {
+            try {
+                // 使用当前筛选的日记列表
+                const filteredJournals = currentFilteredJournals.filter(journal => 
+                    journal.tag && stringContains(journal.tag.toLowerCase(), tag.toLowerCase())
+                );
+                
+                if (filteredJournals.length === 0) {
+                    showMessage(`没有找到标签"${tag}"相关的日记`);
+                    return;
+                }
+                
+                // 按热度排序
+                const sortedJournals = quickSort(filteredJournals, (a, b) => {
+                    const scoreA = (a.views || 0) * 0.7 + (a.avg_rating || 0) * 0.3;
+                    const scoreB = (b.views || 0) * 0.7 + (b.avg_rating || 0) * 0.3;
+                    return scoreB - scoreA;
+                });
+                
+                currentFilteredJournals = sortedJournals;
+                renderJournalList(sortedJournals);
+                showMessage(`显示标签"${tag}"下的所有日记`);
+            } catch (error) {
+                console.error('获取标签日记错误:', error);
+                showMessage('获取日记失败');
+            }
+        }
+
+        // 在点赞状态改变时保存到本地存储
+        function saveCommentLikeStates() {
+            localStorage.setItem('commentLikeStates', JSON.stringify(commentLikeStates));
+        }
+
+        // 添加按标签搜索的函数
+        function searchByTag(journals, tag) {
+            // 使用字符串包含算法进行标签搜索
+            return journals.filter(journal => 
+                journal.tag && stringContains(journal.tag.toLowerCase(), tag.toLowerCase())
+            );
+        }
+
+        // 修改兴趣推荐函数
+        async function loadInterestRecommendations() {
+            try {
+                // 获取当前用户信息
+                const authResponse = await fetch('/api/check-auth');
+                const authData = await authResponse.json();
+                
+                if (!authData.isLoggedIn) {
+                    const container = document.getElementById('interestRecommendations');
+                    if (container) {
+                        container.innerHTML = '<p class="text-gray-500">请先登录以查看兴趣推荐</p>';
+                    }
+                    return;
+                }
+
+                console.log('加载用户兴趣推荐，用户ID:', authData.user.id);
+
+                // 从数据库获取用户兴趣标签
+                const response = await fetch(`/api/interest/${authData.user.id}`);
+                const data = await response.json();
+                
+                if (!data.success) {
+                    throw new Error(data.message || '获取兴趣标签失败');
+                }
+
+                console.log('获取到的兴趣标签:', data.interests);
+
+                const container = document.getElementById('interestRecommendations');
+                if (!container) {
+                    console.log('未找到兴趣推荐容器');
+                    return;
+                }
+
+                if (!data.interests) {
+                    container.innerHTML = `
+                        <div class="empty-message">
+                            <p>您还没有兴趣标签记录</p>
+                            <p>请先浏览一些标签，系统会自动记录您的兴趣！</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // 获取该标签下的所有日记
+                const journalsResponse = await fetch(`/api/journals/tag/${data.interests.tag}`);
+                const journalsData = await journalsResponse.json();
+                
+                if (!journalsData.success || !journalsData.journals || journalsData.journals.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-message">
+                            <p>还没有找到与您兴趣标签"${data.interests.tag}"相关的日记</p>
+                            <p>您可以继续浏览其他标签，或者发布一篇相关日记！</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // 渲染日记列表
+                const journals = journalsData.journals;
+                container.innerHTML = `
+                    <h3 class="text-lg font-semibold mb-4">根据您的兴趣推荐 - ${data.interests.tag}</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        ${journals.map(journal => `
+                            <div class="bg-white rounded-lg shadow-md p-4 cursor-pointer hover:shadow-lg transition-shadow"
+                                 onclick="showJournalDetail('${journal.journal_id}')">
+                                <h4 class="font-semibold mb-2">${journal.title}</h4>
+                                <p class="text-gray-600 text-sm mb-2">${journal.content.substring(0, 100)}...</p>
+                                <div class="flex justify-between text-sm text-gray-500">
+                                    <span>作者: ${journal.author}</span>
+                                    <span>浏览: ${journal.views || 0}</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } catch (error) {
+                console.error('加载兴趣推荐失败:', error);
+                const container = document.getElementById('interestRecommendations');
+                if (container) {
+                    container.innerHTML = '<p class="text-red-500">加载推荐失败，请稍后重试</p>';
+                }
+            }
+        }
+
+        // 自定义LZ77压缩算法实现
+        class LZ77Compressor {
+            constructor(windowSize = 4096, lookAheadSize = 64) {
+                this.windowSize = windowSize;      // 滑动窗口大小
+                this.lookAheadSize = lookAheadSize; // 前瞻缓冲区大小
+            }
+
+            // 压缩文本
+            compress(text) {
+                if (!text) return '';
+                
+                const result = [];
+                let pos = 0;
+                
+                while (pos < text.length) {
+                    // 获取当前窗口和前瞻缓冲区
+                    const windowStart = Math.max(0, pos - this.windowSize);
+                    const window = text.substring(windowStart, pos);
+                    const lookAhead = text.substring(pos, pos + this.lookAheadSize);
+                    
+                    // 在窗口中查找最长匹配
+                    const match = this.findLongestMatch(window, lookAhead);
+                    
+                    if (match.length > 2) { // 只有当匹配长度大于2时才使用压缩
+                        // 输出(偏移量, 长度, 下一个字符)
+                        result.push({
+                            offset: pos - windowStart - match.start,
+                            length: match.length,
+                            next: text[pos + match.length]
+                        });
+                        pos += match.length + 1;
+                    } else {
+                        // 输出原始字符
+                        result.push({
+                            offset: 0,
+                            length: 0,
+                            next: text[pos]
+                        });
+                        pos++;
+                    }
+                }
+                
+                // 将结果转换为字符串
+                return this.encodeResult(result);
+            }
+
+            // 解压缩文本
+            decompress(compressed) {
+                if (!compressed) return '';
+                
+                const result = [];
+                const tokens = this.decodeResult(compressed);
+                
+                for (const token of tokens) {
+                    if (token.length === 0) {
+                        // 直接输出字符
+                        result.push(token.next);
+                    } else {
+                        // 从已解压的结果中复制匹配的字符串
+                        const start = result.length - token.offset;
+                        for (let i = 0; i < token.length; i++) {
+                            result.push(result[start + i]);
+                        }
+                        result.push(token.next);
+                    }
+                }
+                
+                return result.join('');
+            }
+
+            // 在窗口中查找最长匹配
+            findLongestMatch(window, lookAhead) {
+                let bestLength = 0;
+                let bestStart = 0;
+                
+                for (let i = 0; i < window.length; i++) {
+                    let length = 0;
+                    while (length < lookAhead.length && 
+                           window[i + length] === lookAhead[length]) {
+                        length++;
+                    }
+                    
+                    if (length > bestLength) {
+                        bestLength = length;
+                        bestStart = i;
+                    }
+                }
+                
+                return {
+                    start: bestStart,
+                    length: bestLength
+                };
+            }
+
+            // 将压缩结果编码为字符串
+            encodeResult(result) {
+                return result.map(token => {
+                    const offset = token.offset.toString(36);
+                    const length = token.length.toString(36);
+                    return `${offset},${length},${token.next}`;
+                }).join('|');
+            }
+
+            // 将字符串解码为压缩结果
+            decodeResult(encoded) {
+                return encoded.split('|').map(token => {
+                    const [offset, length, next] = token.split(',');
+                    return {
+                        offset: parseInt(offset, 36),
+                        length: parseInt(length, 36),
+                        next: next
+                    };
+                });
+            }
+        }
+
+        // 创建压缩器实例
+        const compressor = new LZ77Compressor();
+
+        // 压缩内容
+        async function compressContent(content) {
+            try {
+                return compressor.compress(content);
+            } catch (error) {
+                console.error('压缩内容失败:', error);
+                throw error;
+            }
+        }
+
+        // 解压缩内容
+        async function decompressContent(compressedContent) {
+            try {
+                if (!compressedContent) {
+                    console.log('内容为空，返回空字符串');
+                    return '';
+                }
+
+                // 检查内容是否已经是解压缩的
+                if (typeof compressedContent === 'string' && !compressedContent.includes('|')) {
+                    console.log('内容未压缩，直接返回');
+                    return compressedContent;
+                }
+
+                const result = compressor.decompress(compressedContent);
+                console.log('解压缩成功，内容长度:', result.length);
+                return result;
+            } catch (error) {
+                console.error('解压缩内容失败:', error);
+                console.error('压缩内容:', compressedContent);
+                // 如果解压缩失败，尝试直接返回原始内容
+                return compressedContent;
+            }
+        }
+    </script>
+</body>
+</html>
